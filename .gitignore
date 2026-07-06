@@ -1,0 +1,64 @@
+# ---------------------------------------------
+# Dependencias
+# ---------------------------------------------
+node_modules/
+.pnp
+.pnp.js
+.yarn/
+
+# ---------------------------------------------
+# Variables de entorno / SECRETOS (nunca subir)
+# ---------------------------------------------
+.env
+.env.*
+.env.txt
+*.env
+# Excepción: sí se versiona la plantilla de ejemplo
+!.env.example
+
+# ---------------------------------------------
+# Build / salida de Vite
+# ---------------------------------------------
+dist/
+dist-ssr/
+build/
+*.local
+
+# ---------------------------------------------
+# Logs
+# ---------------------------------------------
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# ---------------------------------------------
+# Caché de herramientas
+# ---------------------------------------------
+.vite/
+.cache/
+.eslintcache
+coverage/
+
+# ---------------------------------------------
+# Supabase (CLI local)
+# ---------------------------------------------
+.branches/
+.temp/
+supabase/.temp/
+supabase/.branches/
+
+# ---------------------------------------------
+# Editor / Sistema operativo
+# ---------------------------------------------
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store
+Thumbs.db
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
