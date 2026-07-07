@@ -15,10 +15,7 @@ export default function App() {
           <Route path="pipeline" element={<PlaceholderPage title="Pipeline" />} />
           <Route path="actividad" element={<PlaceholderPage title="Actividad" />} />
           <Route path="tareas" element={<PlaceholderPage title="Tareas" />} />
-          <Route path="comunicaciones" element={<PlaceholderPage title="Comunicaciones" />} />
-          <Route path="demanda" element={<PlaceholderPage title="Demanda" />} />
           <Route path="pedidos" element={<PlaceholderPage title="Pedidos" />} />
-          <Route path="condiciones" element={<PlaceholderPage title="Condiciones" />} />
           <Route path="informes" element={<PlaceholderPage title="Informes" />} />
         </Route>
       </Route>

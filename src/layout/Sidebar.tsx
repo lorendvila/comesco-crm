@@ -1,15 +1,15 @@
 import { NavLink } from 'react-router-dom'
 
+// Barra lateral = destinos de navegación. Los "detalles de un cliente"
+// (condiciones, comunicaciones, contactos...) viven dentro de la ficha de
+// cada cliente, no aquí. La demanda es un análisis dentro de Informes.
 const NAV = [
   { to: '/', label: 'Inicio', end: true },
   { to: '/clientes', label: 'Clientes' },
   { to: '/pipeline', label: 'Pipeline' },
   { to: '/actividad', label: 'Actividad' },
   { to: '/tareas', label: 'Tareas' },
-  { to: '/comunicaciones', label: 'Comunicaciones' },
-  { to: '/demanda', label: 'Demanda' },
   { to: '/pedidos', label: 'Pedidos' },
-  { to: '/condiciones', label: 'Condiciones' },
   { to: '/informes', label: 'Informes' },
 ]
 
