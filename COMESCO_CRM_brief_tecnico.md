@@ -14,6 +14,8 @@ Este documento resume todo lo definido hasta ahora (infografía + contexto de ne
 
 ## 2. Roles y autenticación
 
+**Códigos internos:** `clientes` y `referencias` tienen, además del `id` (UUID técnico), un `codigo_interno` legible y correlativo (`CLI-000001`, `REF-000001`...), generado automáticamente por la base de datos al crear cada fila. Mismo patrón para cualquier tabla futura que lo necesite. No sustituye al UUID (que sigue siendo la clave real de relación entre tablas) — es solo para que las personas puedan referirse a un cliente o referencia sin decir un UUID en voz alta.
+
 Dos roles únicamente:
 
 | Rol | Alcance |
@@ -39,8 +41,10 @@ CREATE TABLE users (
 );
 
 -- Clientes / leads
+CREATE SEQUENCE clientes_codigo_seq START 1;
 CREATE TABLE clientes (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  codigo_interno VARCHAR(12) UNIQUE NOT NULL DEFAULT ('CLI-' || LPAD(nextval('clientes_codigo_seq')::text, 6, '0')),
   nombre VARCHAR(255) NOT NULL,
   canal VARCHAR(20) CHECK (canal IN ('retail','food_service','industria')), -- NULL = aún sin definir (lead incompleto)
   estado VARCHAR(20) NOT NULL DEFAULT 'lead' CHECK (estado IN ('lead','activo','inactivo')),
@@ -72,8 +76,10 @@ CREATE TABLE contactos_cliente (
 CREATE INDEX idx_contactos_cliente ON contactos_cliente(cliente_id);
 
 -- Referencias (producto + formato, nunca agrupados)
+CREATE SEQUENCE referencias_codigo_seq START 1;
 CREATE TABLE referencias (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  codigo_interno VARCHAR(12) UNIQUE NOT NULL DEFAULT ('REF-' || LPAD(nextval('referencias_codigo_seq')::text, 6, '0')),
   nombre_producto VARCHAR(255) NOT NULL,      -- ej. "Aceite de oliva virgen extra"
   formato VARCHAR(100) NOT NULL,               -- ej. "500ML"
   categoria VARCHAR(100),                      -- ej. "Aceite", "Aceitunas", "Vino"
