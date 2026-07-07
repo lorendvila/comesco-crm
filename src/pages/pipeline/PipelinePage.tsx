@@ -24,6 +24,8 @@ export function PipelinePage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [modal, setModal] = useState<Modal>(null)
+  const [dragId, setDragId] = useState<string | null>(null)
+  const [dragOver, setDragOver] = useState<string | null>(null)
 
   const cargar = () => {
     setLoading(true)
@@ -40,7 +42,6 @@ export function PipelinePage() {
 
   const resumen = useMemo(() => {
     const abiertas = ops.filter((o) => ETAPAS_ABIERTAS.includes(o.etapa))
-    const bruto = abiertas.reduce((s, o) => s + (o.valor_estimado ?? 0), 0)
     const ponderado = abiertas.reduce(
       (s, o) => s + (o.valor_estimado ?? 0) * ((o.probabilidad_cierre ?? 0) / 100),
       0,
@@ -48,12 +49,24 @@ export function PipelinePage() {
     const ganado = ops
       .filter((o) => o.etapa === 'cierre_ganado')
       .reduce((s, o) => s + (o.valor_estimado ?? 0), 0)
-    return { bruto, ponderado, ganado }
+    // Pipeline total = todo lo vivo (excluye las oportunidades perdidas)
+    const total = ops
+      .filter((o) => o.etapa !== 'cierre_perdido')
+      .reduce((s, o) => s + (o.valor_estimado ?? 0), 0)
+    return { total, ponderado, ganado }
   }, [ops])
 
   const moverEtapa = async (op: OportunidadConCliente, etapa: string) => {
+    if (op.etapa === etapa) return
     await updateOportunidad(op.id, { etapa })
     cargar()
+  }
+
+  const soltar = (etapa: string) => {
+    const op = ops.find((o) => o.id === dragId)
+    setDragId(null)
+    setDragOver(null)
+    if (op) moverEtapa(op, etapa)
   }
 
   return (
@@ -67,14 +80,14 @@ export function PipelinePage() {
 
       <div className="summary-row">
         <div className="card-metric">
-          <p className="card-metric__label">Pipeline abierto (bruto)</p>
-          <p className="card-metric__value">{formatCOP(resumen.bruto)}</p>
-          <p className="card-metric__sub">Prospección + Negociación</p>
+          <p className="card-metric__label">Pipeline total</p>
+          <p className="card-metric__value">{formatCOP(resumen.total)}</p>
+          <p className="card-metric__sub">Todo lo vivo (sin perdidas)</p>
         </div>
         <div className="card-metric">
           <p className="card-metric__label">Proyección ponderada</p>
           <p className="card-metric__value">{formatCOP(resumen.ponderado)}</p>
-          <p className="card-metric__sub">Valor × probabilidad</p>
+          <p className="card-metric__sub">Valor × probabilidad (abiertas)</p>
         </div>
         <div className="card-metric">
           <p className="card-metric__label">Ganado</p>
@@ -93,13 +106,34 @@ export function PipelinePage() {
               const enEtapa = ops.filter((o) => o.etapa === et.value)
               const suma = enEtapa.reduce((s, o) => s + (o.valor_estimado ?? 0), 0)
               return (
-                <div key={et.value} className="pipeline-col">
-                  <div className="pipeline-col__head">
-                    <span className="t-sub">{et.label}</span>
-                    <span className="t-caption">{enEtapa.length} · {formatCOP(suma)}</span>
+                <div
+                  key={et.value}
+                  className={'pipeline-col' + (dragOver === et.value ? ' pipeline-col--over' : '')}
+                  onDragOver={(e) => {
+                    e.preventDefault()
+                    if (dragOver !== et.value) setDragOver(et.value)
+                  }}
+                  onDrop={() => soltar(et.value)}
+                >
+                  <div className="pipeline-col__head stack stack-1">
+                    <span className="t-label">{et.label}</span>
+                    <span className={`col-total col-total--${et.value}`}>{formatCOP(suma)}</span>
+                    <span className="t-caption">
+                      {enEtapa.length} oportunidad{enEtapa.length === 1 ? '' : 'es'}
+                    </span>
                   </div>
+
                   {enEtapa.map((o) => (
-                    <div key={o.id} className="oportunidad-card">
+                    <div
+                      key={o.id}
+                      className={'oportunidad-card' + (dragId === o.id ? ' oportunidad-card--dragging' : '')}
+                      draggable
+                      onDragStart={() => setDragId(o.id)}
+                      onDragEnd={() => {
+                        setDragId(null)
+                        setDragOver(null)
+                      }}
+                    >
                       <span className="t-body">{o.clientes?.nombre ?? '—'}</span>
                       <div className="cluster cluster-2">
                         <span className="t-sub">{formatCOP(o.valor_estimado)}</span>
@@ -109,23 +143,15 @@ export function PipelinePage() {
                       </div>
                       {o.fecha_cierre && <span className="t-caption">Cierre: {o.fecha_cierre}</span>}
                       <div className="cluster cluster-2">
-                        <select
-                          className="input input-xs"
-                          value={o.etapa}
-                          onChange={(e) => moverEtapa(o, e.target.value)}
-                          title="Mover de etapa"
-                        >
-                          {ETAPAS.map((e2) => (
-                            <option key={e2.value} value={e2.value}>{e2.label}</option>
-                          ))}
-                        </select>
                         <button className="btn btn-sm btn-outline" onClick={() => setModal({ mode: 'edit', op: o })}>
                           Editar
                         </button>
                       </div>
                     </div>
                   ))}
-                  {enEtapa.length === 0 && <p className="t-caption" style={{ padding: 'var(--sp-2)' }}>—</p>}
+                  {enEtapa.length === 0 && (
+                    <p className="pipeline-col__empty t-caption">Arrastra aquí</p>
+                  )}
                 </div>
               )
             })}
@@ -167,6 +193,3 @@ export function PipelinePage() {
     </div>
   )
 }
-
-// Reexport para claridad de tipos en otros módulos si hiciera falta.
-export type { OportunidadConCliente }
