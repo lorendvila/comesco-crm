@@ -370,3 +370,17 @@ select.input {
   max-height: 90vh;
   overflow: auto;
 }
+.modal--wide { max-width: 760px; }
+
+/* ---- Líneas de pedido ---- */
+.linea-row {
+  display: grid;
+  grid-template-columns: 2fr 0.8fr 0.9fr 1fr auto auto;
+  gap: var(--sp-2);
+  align-items: center;
+}
+.linea-row__sub {
+  text-align: right;
+  white-space: nowrap;
+  color: var(--text-2);
+}

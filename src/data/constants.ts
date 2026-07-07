@@ -54,6 +54,21 @@ export const ESTADOS_ACTIVIDAD = [
   { value: 'programada', label: 'Programada' },
 ] as const
 
+export const CANALES_ORIGEN = [
+  { value: 'whatsapp', label: 'WhatsApp' },
+  { value: 'email', label: 'Email' },
+  { value: 'telefono', label: 'Teléfono' },
+  { value: 'visita', label: 'Visita' },
+  { value: 'otro', label: 'Otro' },
+] as const
+
+export const ESTADOS_PEDIDO = [
+  { value: 'recibido', label: 'Recibido' },
+  { value: 'entregado', label: 'Entregado' },
+  { value: 'facturado', label: 'Facturado' },
+  { value: 'cancelado', label: 'Cancelado' },
+] as const
+
 const dtFmt = new Intl.DateTimeFormat('es-CO', { dateStyle: 'medium', timeStyle: 'short' })
 const dFmt = new Intl.DateTimeFormat('es-CO', { dateStyle: 'medium' })
 

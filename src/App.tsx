@@ -9,6 +9,7 @@ import { ClienteFichaPage } from './pages/clientes/ClienteFichaPage'
 import { PipelinePage } from './pages/pipeline/PipelinePage'
 import { ActividadPage } from './pages/actividad/ActividadPage'
 import { TareasPage } from './pages/tareas/TareasPage'
+import { PedidosPage } from './pages/pedidos/PedidosPage'
 
 export default function App() {
   return (
@@ -23,7 +24,7 @@ export default function App() {
           <Route path="pipeline" element={<PipelinePage />} />
           <Route path="actividad" element={<ActividadPage />} />
           <Route path="tareas" element={<TareasPage />} />
-          <Route path="pedidos" element={<PlaceholderPage title="Pedidos" />} />
+          <Route path="pedidos" element={<PedidosPage />} />
           <Route path="informes" element={<PlaceholderPage title="Informes" />} />
         </Route>
       </Route>
