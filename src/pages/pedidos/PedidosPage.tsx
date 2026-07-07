@@ -10,10 +10,13 @@ import {
   createPedido,
   updatePedido,
   deletePedido,
+  listPedidosExport,
+  listLineasExport,
 } from '../../data/pedidos'
-import type { PedidoResumen, PedidoConLineas } from '../../data/pedidos'
+import type { PedidoResumen, PedidoConLineas, FiltroPedidos } from '../../data/pedidos'
 import { PedidoForm, cabeceraVacia } from '../../components/PedidoForm'
 import type { CabeceraState, LineaState } from '../../components/PedidoForm'
+import { downloadCSV } from '../../lib/csv'
 
 type Modal = { mode: 'new' } | { mode: 'edit'; pedido: PedidoConLineas } | null
 
@@ -38,6 +41,8 @@ function toLineas(p: PedidoConLineas): LineaState[] {
   }))
 }
 
+const hoyISO = () => new Date().toISOString().slice(0, 10)
+
 export function PedidosPage() {
   const [pedidos, setPedidos] = useState<PedidoResumen[]>([])
   const [clientes, setClientes] = useState<ClienteResumen[]>([])
@@ -45,28 +50,59 @@ export function PedidosPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [modal, setModal] = useState<Modal>(null)
+  const [filtro, setFiltro] = useState<FiltroPedidos>({})
 
-  const cargar = () => {
-    setLoading(true)
-    Promise.all([listPedidos(), listClientes(), listReferencias()])
-      .then(([p, c, r]) => {
-        setPedidos(p)
+  // Catálogos (una vez)
+  useEffect(() => {
+    Promise.all([listClientes(), listReferencias()])
+      .then(([c, r]) => {
         setClientes(c)
         setReferencias(r)
       })
+      .catch(() => setError('No se pudieron cargar los catálogos.'))
+  }, [])
+
+  // Lista de pedidos (según filtro)
+  const cargarPedidos = () => {
+    setLoading(true)
+    listPedidos(filtro)
+      .then(setPedidos)
       .catch(() => setError('No se pudieron cargar los pedidos.'))
       .finally(() => setLoading(false))
   }
-
-  useEffect(cargar, [])
+  useEffect(cargarPedidos, [filtro])
 
   const abrirEdicion = async (id: string) => {
     try {
-      const pedido = await getPedido(id)
-      setModal({ mode: 'edit', pedido })
+      setModal({ mode: 'edit', pedido: await getPedido(id) })
     } catch {
       setError('No se pudo abrir el pedido.')
     }
+  }
+
+  const exportarPedidos = async () => {
+    const data = await listPedidosExport(filtro)
+    downloadCSV(
+      `pedidos_${hoyISO()}.csv`,
+      ['Recepción', 'Entrega', 'Factura', 'Cliente', 'Razón social', 'Canal', 'Estado', 'Total COP'],
+      data.map((p) => [
+        p.fecha_pedido, p.fecha_entrega, p.fecha_factura,
+        p.clientes?.nombre ?? '', p.clientes?.razon_social ?? '',
+        labelDe(CANALES_ORIGEN, p.canal_origen), labelDe(ESTADOS_PEDIDO, p.estado), p.total_cop,
+      ]),
+    )
+  }
+
+  const exportarLineas = async () => {
+    const rows = await listLineasExport(filtro)
+    downloadCSV(
+      `pedidos_lineas_${hoyISO()}.csv`,
+      ['Recepción', 'Cliente', 'Razón social', 'Estado', 'Referencia', 'Formato', 'Categoría', 'Cantidad', 'Unidad', 'Precio ud. COP', 'Subtotal COP'],
+      rows.map((r) => [
+        r.fecha_pedido, r.cliente, r.razon_social, r.estado,
+        r.referencia, r.formato, r.categoria, r.cantidad, r.unidad, r.precio, r.subtotal,
+      ]),
+    )
   }
 
   return (
@@ -74,6 +110,31 @@ export function PedidosPage() {
       <div className="page-header">
         <h1 className="t-display">Pedidos</h1>
         <button className="btn btn-primary" onClick={() => setModal({ mode: 'new' })}>Nuevo pedido</button>
+      </div>
+
+      <div className="card stack stack-3">
+        <div className="cluster cluster-3" style={{ alignItems: 'flex-end' }}>
+          <label className="field">
+            <span className="field__label">Desde</span>
+            <input className="input" type="date" value={filtro.desde ?? ''} onChange={(e) => setFiltro({ ...filtro, desde: e.target.value || undefined })} />
+          </label>
+          <label className="field">
+            <span className="field__label">Hasta</span>
+            <input className="input" type="date" value={filtro.hasta ?? ''} onChange={(e) => setFiltro({ ...filtro, hasta: e.target.value || undefined })} />
+          </label>
+          <label className="field" style={{ minWidth: 220 }}>
+            <span className="field__label">Cliente</span>
+            <select className="input" value={filtro.clienteId ?? ''} onChange={(e) => setFiltro({ ...filtro, clienteId: e.target.value || undefined })}>
+              <option value="">Todos</option>
+              {clientes.map((c) => <option key={c.id} value={c.id}>{c.nombre}</option>)}
+            </select>
+          </label>
+          <button className="btn btn-sm btn-outline" onClick={() => setFiltro({})}>Limpiar</button>
+        </div>
+        <div className="cluster cluster-2">
+          <button className="btn btn-outline btn-sm" onClick={exportarPedidos}>Exportar pedidos (CSV)</button>
+          <button className="btn btn-outline btn-sm" onClick={exportarLineas}>Exportar líneas por referencia (CSV)</button>
+        </div>
       </div>
 
       {loading && <p className="t-body-sm">Cargando…</p>}
@@ -104,7 +165,7 @@ export function PedidosPage() {
                 </tr>
               ))}
               {pedidos.length === 0 && (
-                <tr><td colSpan={6} className="t-body-sm">Aún no hay pedidos.</td></tr>
+                <tr><td colSpan={6} className="t-body-sm">No hay pedidos con estos filtros.</td></tr>
               )}
             </tbody>
           </table>
@@ -128,14 +189,14 @@ export function PedidosPage() {
                 if (modal.mode === 'new') await createPedido(cabecera, lineas)
                 else await updatePedido(modal.pedido.id, cabecera, lineas)
                 setModal(null)
-                cargar()
+                cargarPedidos()
               }}
               onDelete={
                 modal.mode === 'edit'
                   ? async () => {
                       await deletePedido(modal.pedido.id)
                       setModal(null)
-                      cargar()
+                      cargarPedidos()
                     }
                   : undefined
               }

@@ -33,14 +33,108 @@ function totalDe(lineas: LineaInput[]): number {
   return lineas.reduce((s, l) => s + l.cantidad * (l.precio_unitario_cop ?? 0), 0)
 }
 
-export async function listPedidos(): Promise<PedidoResumen[]> {
-  const { data, error } = await supabase
+export interface FiltroPedidos {
+  desde?: string
+  hasta?: string
+  clienteId?: string
+}
+
+export async function listPedidos(f: FiltroPedidos = {}): Promise<PedidoResumen[]> {
+  let q = supabase
     .from('pedidos')
     .select('id, fecha_pedido, estado, canal_origen, total_cop, clientes(nombre)')
     .order('fecha_pedido', { ascending: false })
-    .returns<PedidoResumen[]>()
+  if (f.desde) q = q.gte('fecha_pedido', f.desde)
+  if (f.hasta) q = q.lte('fecha_pedido', f.hasta)
+  if (f.clienteId) q = q.eq('cliente_id', f.clienteId)
+  const { data, error } = await q.returns<PedidoResumen[]>()
   if (error) throw error
   return data ?? []
+}
+
+// ---- Export ----
+
+interface PedidoExport {
+  fecha_pedido: string
+  fecha_entrega: string | null
+  fecha_factura: string | null
+  canal_origen: string
+  estado: string
+  total_cop: number | null
+  clientes: { nombre: string; razon_social: string | null } | null
+}
+
+export interface LineaExportRow {
+  fecha_pedido: string
+  cliente: string
+  razon_social: string
+  estado: string
+  referencia: string
+  formato: string
+  categoria: string
+  cantidad: number
+  unidad: string
+  precio: number | null
+  subtotal: number | null
+}
+
+function aplicarFiltros<T>(q: T & { gte: Function; lte: Function; eq: Function }, f: FiltroPedidos): T {
+  let r = q
+  if (f.desde) r = r.gte('fecha_pedido', f.desde)
+  if (f.hasta) r = r.lte('fecha_pedido', f.hasta)
+  if (f.clienteId) r = r.eq('cliente_id', f.clienteId)
+  return r
+}
+
+export async function listPedidosExport(f: FiltroPedidos): Promise<PedidoExport[]> {
+  const base = supabase
+    .from('pedidos')
+    .select('fecha_pedido, fecha_entrega, fecha_factura, canal_origen, estado, total_cop, clientes(nombre, razon_social)')
+    .order('fecha_pedido', { ascending: false })
+  const { data, error } = await aplicarFiltros(base, f).returns<PedidoExport[]>()
+  if (error) throw error
+  return data ?? []
+}
+
+interface PedidoConLineasExport {
+  fecha_pedido: string
+  estado: string
+  clientes: { nombre: string; razon_social: string | null } | null
+  pedido_lineas: {
+    cantidad: number
+    unidad: string
+    precio_unitario_cop: number | null
+    subtotal_cop: number | null
+    referencias: { nombre_producto: string; formato: string; categoria: string | null } | null
+  }[]
+}
+
+export async function listLineasExport(f: FiltroPedidos): Promise<LineaExportRow[]> {
+  const base = supabase
+    .from('pedidos')
+    .select('fecha_pedido, estado, clientes(nombre, razon_social), pedido_lineas(cantidad, unidad, precio_unitario_cop, subtotal_cop, referencias(nombre_producto, formato, categoria))')
+    .order('fecha_pedido', { ascending: false })
+  const { data, error } = await aplicarFiltros(base, f).returns<PedidoConLineasExport[]>()
+  if (error) throw error
+  const rows: LineaExportRow[] = []
+  for (const p of data ?? []) {
+    for (const l of p.pedido_lineas) {
+      rows.push({
+        fecha_pedido: p.fecha_pedido,
+        cliente: p.clientes?.nombre ?? '',
+        razon_social: p.clientes?.razon_social ?? '',
+        estado: p.estado,
+        referencia: l.referencias?.nombre_producto ?? '',
+        formato: l.referencias?.formato ?? '',
+        categoria: l.referencias?.categoria ?? '',
+        cantidad: l.cantidad,
+        unidad: l.unidad,
+        precio: l.precio_unitario_cop,
+        subtotal: l.subtotal_cop,
+      })
+    }
+  }
+  return rows
 }
 
 export async function getPedido(id: string): Promise<PedidoConLineas> {
