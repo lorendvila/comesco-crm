@@ -5,12 +5,16 @@ import type { Cliente } from '../../data/clientes'
 import { ESTADOS, labelDe } from '../../data/constants'
 import { DatosTab } from './DatosTab'
 import { ContactosTab } from './ContactosTab'
+import { ActividadPanel } from '../../components/ActividadPanel'
+import { TareasPanel } from '../../components/TareasPanel'
 
-type TabId = 'datos' | 'contactos'
+type TabId = 'datos' | 'contactos' | 'actividad' | 'tareas'
 
 const TABS: { id: TabId; label: string }[] = [
   { id: 'datos', label: 'Datos' },
   { id: 'contactos', label: 'Contactos' },
+  { id: 'actividad', label: 'Actividad' },
+  { id: 'tareas', label: 'Tareas' },
 ]
 
 export function ClienteFichaPage() {
@@ -58,6 +62,8 @@ export function ClienteFichaPage() {
 
       {tab === 'datos' && <DatosTab cliente={cliente} onSaved={cargar} />}
       {tab === 'contactos' && <ContactosTab clienteId={cliente.id} />}
+      {tab === 'actividad' && <ActividadPanel clienteId={cliente.id} />}
+      {tab === 'tareas' && <TareasPanel clienteId={cliente.id} />}
     </div>
   )
 }

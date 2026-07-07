@@ -7,6 +7,8 @@ import { ClientesListPage } from './pages/clientes/ClientesListPage'
 import { NuevoClientePage } from './pages/clientes/NuevoClientePage'
 import { ClienteFichaPage } from './pages/clientes/ClienteFichaPage'
 import { PipelinePage } from './pages/pipeline/PipelinePage'
+import { ActividadPage } from './pages/actividad/ActividadPage'
+import { TareasPage } from './pages/tareas/TareasPage'
 
 export default function App() {
   return (
@@ -19,8 +21,8 @@ export default function App() {
           <Route path="clientes/nuevo" element={<NuevoClientePage />} />
           <Route path="clientes/:id" element={<ClienteFichaPage />} />
           <Route path="pipeline" element={<PipelinePage />} />
-          <Route path="actividad" element={<PlaceholderPage title="Actividad" />} />
-          <Route path="tareas" element={<PlaceholderPage title="Tareas" />} />
+          <Route path="actividad" element={<ActividadPage />} />
+          <Route path="tareas" element={<TareasPage />} />
           <Route path="pedidos" element={<PlaceholderPage title="Pedidos" />} />
           <Route path="informes" element={<PlaceholderPage title="Informes" />} />
         </Route>

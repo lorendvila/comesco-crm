@@ -40,3 +40,31 @@ export function formatCOP(n: number | null | undefined): string {
   if (n == null) return '—'
   return copFmt.format(n)
 }
+
+export const TIPOS_ACTIVIDAD = [
+  { value: 'llamada', label: 'Llamada' },
+  { value: 'email', label: 'Email' },
+  { value: 'visita', label: 'Visita' },
+  { value: 'comentario', label: 'Comentario' },
+  { value: 'otro', label: 'Otro' },
+] as const
+
+export const ESTADOS_ACTIVIDAD = [
+  { value: 'realizada', label: 'Realizada' },
+  { value: 'programada', label: 'Programada' },
+] as const
+
+const dtFmt = new Intl.DateTimeFormat('es-CO', { dateStyle: 'medium', timeStyle: 'short' })
+const dFmt = new Intl.DateTimeFormat('es-CO', { dateStyle: 'medium' })
+
+// Fecha + hora (para timestamptz, p. ej. actividades.fecha)
+export function formatFechaHora(iso: string | null): string {
+  if (!iso) return '—'
+  return dtFmt.format(new Date(iso))
+}
+
+// Solo fecha (para columnas DATE, p. ej. tareas.fecha_limite = "YYYY-MM-DD")
+export function formatFecha(fecha: string | null): string {
+  if (!fecha) return '—'
+  return dFmt.format(new Date(fecha + 'T00:00:00'))
+}
