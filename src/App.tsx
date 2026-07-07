@@ -3,6 +3,9 @@ import { LoginPage } from './auth/LoginPage'
 import { ProtectedRoute } from './auth/ProtectedRoute'
 import { AppShell } from './layout/AppShell'
 import { PlaceholderPage } from './pages/PlaceholderPage'
+import { ClientesListPage } from './pages/clientes/ClientesListPage'
+import { NuevoClientePage } from './pages/clientes/NuevoClientePage'
+import { ClienteFichaPage } from './pages/clientes/ClienteFichaPage'
 
 export default function App() {
   return (
@@ -11,7 +14,9 @@ export default function App() {
       <Route element={<ProtectedRoute />}>
         <Route path="/" element={<AppShell />}>
           <Route index element={<PlaceholderPage title="Inicio" />} />
-          <Route path="clientes" element={<PlaceholderPage title="Clientes" />} />
+          <Route path="clientes" element={<ClientesListPage />} />
+          <Route path="clientes/nuevo" element={<NuevoClientePage />} />
+          <Route path="clientes/:id" element={<ClienteFichaPage />} />
           <Route path="pipeline" element={<PlaceholderPage title="Pipeline" />} />
           <Route path="actividad" element={<PlaceholderPage title="Actividad" />} />
           <Route path="tareas" element={<PlaceholderPage title="Tareas" />} />

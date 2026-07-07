@@ -19,8 +19,9 @@ node_modules/
 # ---------------------------------------------
 # Datos de negocio / PII (nunca subir a GitHub)
 # Los datos reales viven en Supabase, no en el repo.
+# (Anclado a la raíz con "/" para no ignorar src/data/)
 # ---------------------------------------------
-data/
+/data/
 *.xlsx
 
 # ---------------------------------------------
