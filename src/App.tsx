@@ -6,6 +6,7 @@ import { PlaceholderPage } from './pages/PlaceholderPage'
 import { ClientesListPage } from './pages/clientes/ClientesListPage'
 import { NuevoClientePage } from './pages/clientes/NuevoClientePage'
 import { ClienteFichaPage } from './pages/clientes/ClienteFichaPage'
+import { PipelinePage } from './pages/pipeline/PipelinePage'
 
 export default function App() {
   return (
@@ -17,7 +18,7 @@ export default function App() {
           <Route path="clientes" element={<ClientesListPage />} />
           <Route path="clientes/nuevo" element={<NuevoClientePage />} />
           <Route path="clientes/:id" element={<ClienteFichaPage />} />
-          <Route path="pipeline" element={<PlaceholderPage title="Pipeline" />} />
+          <Route path="pipeline" element={<PipelinePage />} />
           <Route path="actividad" element={<PlaceholderPage title="Actividad" />} />
           <Route path="tareas" element={<PlaceholderPage title="Tareas" />} />
           <Route path="pedidos" element={<PlaceholderPage title="Pedidos" />} />

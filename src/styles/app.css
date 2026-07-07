@@ -247,3 +247,74 @@ select.input {
   justify-content: space-between;
   gap: var(--sp-4);
 }
+
+/* ---- Resumen (métricas) ---- */
+.summary-row {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--sp-4);
+}
+
+/* ---- Tablero de pipeline ---- */
+.pipeline-scroll {
+  overflow-x: auto;
+  padding-bottom: var(--sp-2);
+}
+.pipeline-board {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(230px, 1fr));
+  gap: var(--sp-4);
+  align-items: start;
+}
+.pipeline-col {
+  background: var(--bg-panel);
+  border-radius: var(--r-lg);
+  padding: var(--sp-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  min-height: 120px;
+}
+.pipeline-col__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: var(--sp-1) var(--sp-2) 0;
+}
+.oportunidad-card {
+  background: var(--bg-raised);
+  border: var(--border-width) solid var(--border);
+  border-radius: var(--r-md);
+  padding: var(--sp-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+.input-xs {
+  height: 30px;
+  font-size: var(--text-sm);
+  padding: 0 var(--sp-2);
+  flex: 1;
+}
+
+/* ---- Modal ---- */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(10, 15, 22, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--sp-6);
+  z-index: 50;
+}
+.modal {
+  background: var(--bg-raised);
+  border: var(--border-width) solid var(--border);
+  border-radius: var(--r-lg);
+  padding: var(--sp-6);
+  width: 100%;
+  max-width: 560px;
+  max-height: 90vh;
+  overflow: auto;
+}
