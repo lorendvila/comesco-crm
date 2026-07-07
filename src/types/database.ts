@@ -132,6 +132,39 @@ export type Database = {
         }
         Relationships: []
       }
+      condiciones_comerciales: {
+        Row: {
+          cliente_id: string
+          comision_pct: number | null
+          created_at: string | null
+          id: string
+          pac_descuento_pct: number | null
+          plazo_pago_dias: number | null
+          precio_especial: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          cliente_id: string
+          comision_pct?: number | null
+          created_at?: string | null
+          id?: string
+          pac_descuento_pct?: number | null
+          plazo_pago_dias?: number | null
+          precio_especial?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          cliente_id?: string
+          comision_pct?: number | null
+          created_at?: string | null
+          id?: string
+          pac_descuento_pct?: number | null
+          plazo_pago_dias?: number | null
+          precio_especial?: number | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       oportunidades: {
         Row: {
           cliente_id: string
