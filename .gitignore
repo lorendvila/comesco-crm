@@ -17,6 +17,13 @@ node_modules/
 !.env.example
 
 # ---------------------------------------------
+# Datos de negocio / PII (nunca subir a GitHub)
+# Los datos reales viven en Supabase, no en el repo.
+# ---------------------------------------------
+data/
+*.xlsx
+
+# ---------------------------------------------
 # Build / salida de Vite
 # ---------------------------------------------
 dist/
