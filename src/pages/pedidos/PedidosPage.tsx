@@ -104,9 +104,17 @@ export function PedidosPage() {
     const rows = await listLineasExport(filtro)
     downloadCSV(
       `pedidos_lineas_${hoyISO()}.csv`,
-      ['Recepción', 'Cliente', 'Razón social', 'Estado', 'Referencia', 'Formato', 'Categoría', 'Cantidad', 'Unidad', 'Precio ud. COP', 'Subtotal COP'],
+      [
+        'Recepción', 'Entrega', 'Factura', 'Vencimiento', 'Fecha pago',
+        'Cliente', 'Razón social', 'Canal', 'Estado',
+        'Nº factura', 'Valor factura', 'Pagado', 'Saldo',
+        'Referencia', 'Formato', 'Categoría', 'Cantidad', 'Unidad', 'Precio ud. COP', 'Subtotal COP',
+      ],
       rows.map((r) => [
-        r.fecha_pedido, r.cliente, r.razon_social, r.estado,
+        r.fecha_pedido, r.fecha_entrega, r.fecha_factura, r.fecha_vencimiento, r.fecha_pago,
+        r.cliente, r.razon_social, labelDe(CANALES_ORIGEN, r.canal_origen), labelDe(ESTADOS_PEDIDO, r.estado),
+        r.numero_factura ?? '', r.valor_factura, r.pagado,
+        r.valor_factura == null ? '' : r.valor_factura - (r.pagado ?? 0),
         r.referencia, r.formato, r.categoria, r.cantidad, r.unidad, r.precio, r.subtotal,
       ]),
     )

@@ -71,9 +71,17 @@ interface PedidoExport {
 
 export interface LineaExportRow {
   fecha_pedido: string
+  fecha_entrega: string | null
+  fecha_factura: string | null
+  fecha_vencimiento: string | null
+  fecha_pago: string | null
   cliente: string
   razon_social: string
+  canal_origen: string
   estado: string
+  numero_factura: string | null
+  valor_factura: number | null
+  pagado: number | null
   referencia: string
   formato: string
   categoria: string
@@ -103,7 +111,15 @@ export async function listPedidosExport(f: FiltroPedidos): Promise<PedidoExport[
 
 interface PedidoConLineasExport {
   fecha_pedido: string
+  fecha_entrega: string | null
+  fecha_factura: string | null
+  fecha_vencimiento: string | null
+  fecha_pago: string | null
+  canal_origen: string
   estado: string
+  numero_factura: string | null
+  valor_factura: number | null
+  pagado: number | null
   clientes: { nombre: string; razon_social: string | null } | null
   pedido_lineas: {
     cantidad: number
@@ -117,7 +133,7 @@ interface PedidoConLineasExport {
 export async function listLineasExport(f: FiltroPedidos): Promise<LineaExportRow[]> {
   const base = supabase
     .from('pedidos')
-    .select('fecha_pedido, estado, clientes(nombre, razon_social), pedido_lineas(cantidad, unidad, precio_unitario_cop, subtotal_cop, referencias(nombre_producto, formato, categoria))')
+    .select('fecha_pedido, fecha_entrega, fecha_factura, fecha_vencimiento, fecha_pago, canal_origen, estado, numero_factura, valor_factura, pagado, clientes(nombre, razon_social), pedido_lineas(cantidad, unidad, precio_unitario_cop, subtotal_cop, referencias(nombre_producto, formato, categoria))')
     .order('fecha_pedido', { ascending: false })
   const { data, error } = await aplicarFiltros(base, f).returns<PedidoConLineasExport[]>()
   if (error) throw error
@@ -126,9 +142,17 @@ export async function listLineasExport(f: FiltroPedidos): Promise<LineaExportRow
     for (const l of p.pedido_lineas) {
       rows.push({
         fecha_pedido: p.fecha_pedido,
+        fecha_entrega: p.fecha_entrega,
+        fecha_factura: p.fecha_factura,
+        fecha_vencimiento: p.fecha_vencimiento,
+        fecha_pago: p.fecha_pago,
         cliente: p.clientes?.nombre ?? '',
         razon_social: p.clientes?.razon_social ?? '',
+        canal_origen: p.canal_origen,
         estado: p.estado,
+        numero_factura: p.numero_factura,
+        valor_factura: p.valor_factura,
+        pagado: p.pagado,
         referencia: l.referencias?.nombre_producto ?? '',
         formato: l.referencias?.formato ?? '',
         categoria: l.referencias?.categoria ?? '',

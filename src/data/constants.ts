@@ -66,6 +66,7 @@ export const ESTADOS_PEDIDO = [
   { value: 'recibido', label: 'Recibido' },
   { value: 'entregado', label: 'Entregado' },
   { value: 'facturado', label: 'Facturado' },
+  { value: 'cobrado', label: 'Cobrado' },
   { value: 'cancelado', label: 'Cancelado' },
 ] as const
 
