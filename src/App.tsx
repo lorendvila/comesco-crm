@@ -18,7 +18,7 @@ export default function App() {
       <Route path="/login" element={<LoginPage />} />
       <Route element={<ProtectedRoute />}>
         <Route path="/" element={<AppShell />}>
-          <Route index element={<PlaceholderPage title="Inicio" />} />
+          <Route index element={<PlaceholderPage title="Dashboard" />} />
           <Route path="clientes" element={<ClientesListPage />} />
           <Route path="clientes/nuevo" element={<NuevoClientePage />} />
           <Route path="clientes/:id" element={<ClienteFichaPage />} />

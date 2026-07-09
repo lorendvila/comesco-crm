@@ -1,18 +1,36 @@
 import { NavLink } from 'react-router-dom'
 
-// Barra lateral = destinos de navegación. Los "detalles de un cliente"
-// (condiciones, comunicaciones, contactos...) viven dentro de la ficha de
-// cada cliente, no aquí. La demanda es un análisis dentro de Informes.
-const NAV = [
-  { to: '/', label: 'Inicio', end: true },
-  { to: '/clientes', label: 'Clientes' },
-  { to: '/pipeline', label: 'Pipeline' },
-  { to: '/actividad', label: 'Actividad' },
-  { to: '/tareas', label: 'Tareas' },
-  { to: '/pedidos', label: 'Pedidos' },
-  { to: '/inventario', label: 'Inventario' },
-  { to: '/informes', label: 'Informes' },
+type NavEntry =
+  | { type: 'link'; to: string; label: string; end?: boolean }
+  | { type: 'group'; label: string; items: { to: string; label: string }[] }
+
+// Barra lateral = destinos. Agrupados en Comercial (seguimiento) y Operaciones.
+// Los detalles de un cliente (condiciones, contactos...) viven en su ficha.
+const NAV: NavEntry[] = [
+  { type: 'link', to: '/', label: 'Dashboard', end: true },
+  {
+    type: 'group',
+    label: 'Comercial',
+    items: [
+      { to: '/pipeline', label: 'Pipeline' },
+      { to: '/actividad', label: 'Actividad' },
+      { to: '/tareas', label: 'Tareas' },
+    ],
+  },
+  {
+    type: 'group',
+    label: 'Operaciones',
+    items: [
+      { to: '/clientes', label: 'Clientes' },
+      { to: '/pedidos', label: 'Pedidos' },
+      { to: '/inventario', label: 'Inventario' },
+    ],
+  },
+  { type: 'link', to: '/informes', label: 'Informes' },
 ]
+
+const itemClass = ({ isActive }: { isActive: boolean }) =>
+  'nav-item' + (isActive ? ' nav-item--active' : '')
 
 export function Sidebar() {
   return (
@@ -22,16 +40,22 @@ export function Sidebar() {
         <span className="sidebar__brand-name">COMESCO</span>
       </div>
       <nav className="sidebar__nav">
-        {NAV.map((item) => (
-          <NavLink
-            key={item.to}
-            to={item.to}
-            end={item.end}
-            className={({ isActive }) => 'nav-item' + (isActive ? ' nav-item--active' : '')}
-          >
-            {item.label}
-          </NavLink>
-        ))}
+        {NAV.map((entry) =>
+          entry.type === 'link' ? (
+            <NavLink key={entry.to} to={entry.to} end={entry.end} className={itemClass}>
+              {entry.label}
+            </NavLink>
+          ) : (
+            <div key={entry.label} className="nav-group">
+              <span className="nav-group__label">{entry.label}</span>
+              {entry.items.map((it) => (
+                <NavLink key={it.to} to={it.to} className={itemClass}>
+                  {it.label}
+                </NavLink>
+              ))}
+            </div>
+          ),
+        )}
       </nav>
     </aside>
   )
