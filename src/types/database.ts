@@ -393,6 +393,42 @@ export type Database = {
         }
         Relationships: []
       }
+      inventario: {
+        Row: {
+          actualizado_at: string | null
+          cantidad_disponible: number
+          contenedor: string | null
+          created_at: string | null
+          id: string
+          notas: string | null
+          referencia_id: string
+          ubicacion: string | null
+          valor_unitario_cop: number | null
+        }
+        Insert: {
+          actualizado_at?: string | null
+          cantidad_disponible?: number
+          contenedor?: string | null
+          created_at?: string | null
+          id?: string
+          notas?: string | null
+          referencia_id: string
+          ubicacion?: string | null
+          valor_unitario_cop?: number | null
+        }
+        Update: {
+          actualizado_at?: string | null
+          cantidad_disponible?: number
+          contenedor?: string | null
+          created_at?: string | null
+          id?: string
+          notas?: string | null
+          referencia_id?: string
+          ubicacion?: string | null
+          valor_unitario_cop?: number | null
+        }
+        Relationships: []
+      }
       users: {
         Row: {
           auth_user_id: string

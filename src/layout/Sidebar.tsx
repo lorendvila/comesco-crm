@@ -10,6 +10,7 @@ const NAV = [
   { to: '/actividad', label: 'Actividad' },
   { to: '/tareas', label: 'Tareas' },
   { to: '/pedidos', label: 'Pedidos' },
+  { to: '/inventario', label: 'Inventario' },
   { to: '/informes', label: 'Informes' },
 ]
 

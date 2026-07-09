@@ -57,6 +57,7 @@ const num = (s: string) => {
 interface Props {
   clientes: ClienteResumen[]
   referencias: ReferenciaResumen[]
+  stock: Record<string, number>
   initialCab: CabeceraState
   initialLineas: LineaState[]
   submitLabel: string
@@ -65,7 +66,7 @@ interface Props {
   onDelete?: () => Promise<void>
 }
 
-export function PedidoForm({ clientes, referencias, initialCab, initialLineas, submitLabel, onSubmit, onCancel, onDelete }: Props) {
+export function PedidoForm({ clientes, referencias, stock, initialCab, initialLineas, submitLabel, onSubmit, onCancel, onDelete }: Props) {
   const [cab, setCab] = useState<CabeceraState>(initialCab)
   const [lineas, setLineas] = useState<LineaState[]>(initialLineas.length ? initialLineas : [{ ...LINEA_VACIA }])
   const [plazo, setPlazo] = useState<number | null>(null)
@@ -209,21 +210,32 @@ export function PedidoForm({ clientes, referencias, initialCab, initialLineas, s
 
       <div className="stack stack-2">
         <span className="t-label">Líneas del pedido</span>
-        {lineas.map((l, i) => (
-          <div key={i} className="linea-row">
-            <select className="input" value={l.referencia_id} onChange={(e) => onRef(i, e.target.value)}>
-              <option value="">Referencia…</option>
-              {referencias.map((r) => (
-                <option key={r.id} value={r.id}>{r.nombre_producto} · {r.formato}</option>
-              ))}
-            </select>
-            <input className="input" type="number" min="0" placeholder="Cant." value={l.cantidad} onChange={(e) => setLinea(i, { cantidad: e.target.value })} />
-            <input className="input" placeholder="Unidad" value={l.unidad} onChange={(e) => setLinea(i, { unidad: e.target.value })} />
-            <input className="input" type="number" min="0" placeholder="Precio ud." value={l.precio} onChange={(e) => setLinea(i, { precio: e.target.value })} />
-            <span className="linea-row__sub t-body-sm">{formatCOP(num(l.cantidad) * num(l.precio))}</span>
-            <button className="btn btn-sm btn-outline" type="button" onClick={() => setLineas((ls) => ls.filter((_, idx) => idx !== i))} title="Quitar línea">✕</button>
-          </div>
-        ))}
+        {lineas.map((l, i) => {
+          const disp = l.referencia_id ? stock[l.referencia_id] : undefined
+          const pide = num(l.cantidad)
+          return (
+            <div key={i} className="linea-wrap">
+              <div className="linea-row">
+                <select className="input" value={l.referencia_id} onChange={(e) => onRef(i, e.target.value)}>
+                  <option value="">Referencia…</option>
+                  {referencias.map((r) => (
+                    <option key={r.id} value={r.id}>{r.nombre_producto} · {r.formato}</option>
+                  ))}
+                </select>
+                <input className="input" type="number" min="0" placeholder="Cant." value={l.cantidad} onChange={(e) => setLinea(i, { cantidad: e.target.value })} />
+                <input className="input" placeholder="Unidad" value={l.unidad} onChange={(e) => setLinea(i, { unidad: e.target.value })} />
+                <input className="input" type="number" min="0" placeholder="Precio ud." value={l.precio} onChange={(e) => setLinea(i, { precio: e.target.value })} />
+                <span className="linea-row__sub t-body-sm">{formatCOP(num(l.cantidad) * num(l.precio))}</span>
+                <button className="btn btn-sm btn-outline" type="button" onClick={() => setLineas((ls) => ls.filter((_, idx) => idx !== i))} title="Quitar línea">✕</button>
+              </div>
+              {disp !== undefined && (
+                <span className={'t-caption linea-stock' + (pide > disp ? ' stock-bajo' : '')}>
+                  Disponible: {disp}{pide > disp ? ` — pides ${pide}, más de lo disponible` : ''}
+                </span>
+              )}
+            </div>
+          )
+        })}
         <div>
           <button className="btn btn-sm btn-outline" type="button" onClick={() => setLineas((ls) => [...ls, { ...LINEA_VACIA }])}>
             + Añadir línea

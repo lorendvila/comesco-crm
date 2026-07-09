@@ -384,3 +384,10 @@ select.input {
   white-space: nowrap;
   color: var(--text-2);
 }
+.linea-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.linea-stock { padding-left: var(--sp-1); }
+.stock-bajo { color: #E0A0A0; }
