@@ -85,6 +85,23 @@ export function PedidoForm({ clientes, referencias, initialCab, initialLineas, s
 
   const total = useMemo(() => lineas.reduce((s, l) => s + num(l.cantidad) * num(l.precio), 0), [lineas])
 
+  // Desglose de IVA "hacia atrás": el precio de línea es con IVA (opción B).
+  const desglose = useMemo(() => {
+    let iva = 0
+    for (const l of lineas) {
+      const ref = referencias.find((r) => r.id === l.referencia_id)
+      const sub = num(l.cantidad) * num(l.precio)
+      if (ref) iva += sub * (ref.iva_pct / (100 + ref.iva_pct))
+    }
+    return { iva, base: total - iva }
+  }, [lineas, referencias, total])
+
+  // La factura debería cuadrar con el total del pedido (ambos con IVA).
+  const facturaCuadra = useMemo(() => {
+    if (cab.valor_factura === '') return true
+    return Math.abs(num(cab.valor_factura) - total) < 1
+  }, [cab.valor_factura, total])
+
   const vencSugerido = useMemo(() => {
     if (!cab.fecha_factura || plazo == null) return null
     const d = new Date(cab.fecha_factura + 'T00:00:00')
@@ -212,9 +229,13 @@ export function PedidoForm({ clientes, referencias, initialCab, initialLineas, s
             + Añadir línea
           </button>
         </div>
-        <div className="cluster cluster-2" style={{ justifyContent: 'flex-end' }}>
-          <span className="t-label">Total</span>
-          <span className="t-heading">{formatCOP(total)}</span>
+        <div className="stack stack-1" style={{ alignItems: 'flex-end' }}>
+          <span className="t-caption">Base imponible (est.): {formatCOP(desglose.base)}</span>
+          <span className="t-caption">IVA (est.): {formatCOP(desglose.iva)}</span>
+          <div className="cluster cluster-2">
+            <span className="t-label">Total con IVA</span>
+            <span className="t-heading">{formatCOP(total)}</span>
+          </div>
         </div>
       </div>
 
@@ -232,6 +253,17 @@ export function PedidoForm({ clientes, referencias, initialCab, initialLineas, s
           <label className="field">
             <span className="field__label">Valor factura (COP)</span>
             <input className="input" type="number" min="0" value={cab.valor_factura} onChange={(e) => setC({ valor_factura: e.target.value })} />
+            {cab.valor_factura === ''
+              ? total > 0 && (
+                  <button type="button" className="btn btn-sm btn-outline" style={{ marginTop: 'var(--sp-1)' }} onClick={() => setC({ valor_factura: String(Math.round(total)) })}>
+                    Usar total del pedido ({formatCOP(total)})
+                  </button>
+                )
+              : !facturaCuadra && (
+                  <span className="login-error" style={{ fontSize: 'var(--text-sm)', marginTop: 'var(--sp-1)' }}>
+                    ⚠ No coincide con el total del pedido ({formatCOP(total)})
+                  </span>
+                )}
           </label>
           <label className="field">
             <span className="field__label">Pagado (COP)</span>

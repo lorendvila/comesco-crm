@@ -346,8 +346,10 @@ export type Database = {
           deleted_at: string | null
           formato: string
           id: string
+          iva_pct: number
           nombre_producto: string
           proveedor: string | null
+          sku: string | null
           unidad: string
           unidades_por_caja: number | null
           unidades_por_palet: number | null
@@ -362,8 +364,10 @@ export type Database = {
           deleted_at?: string | null
           formato: string
           id?: string
+          iva_pct?: number
           nombre_producto: string
           proveedor?: string | null
+          sku?: string | null
           unidad?: string
           unidades_por_caja?: number | null
           unidades_por_palet?: number | null
@@ -378,8 +382,10 @@ export type Database = {
           deleted_at?: string | null
           formato?: string
           id?: string
+          iva_pct?: number
           nombre_producto?: string
           proveedor?: string | null
+          sku?: string | null
           unidad?: string
           unidades_por_caja?: number | null
           unidades_por_palet?: number | null

@@ -7,12 +7,13 @@ export interface ReferenciaResumen {
   formato: string
   categoria: string | null
   unidad: string
+  iva_pct: number
 }
 
 export async function listReferencias(): Promise<ReferenciaResumen[]> {
   const { data, error } = await supabase
     .from('referencias')
-    .select('id, codigo_interno, nombre_producto, formato, categoria, unidad')
+    .select('id, codigo_interno, nombre_producto, formato, categoria, unidad, iva_pct')
     .is('deleted_at', null)
     .order('nombre_producto')
   if (error) throw error
