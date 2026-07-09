@@ -5,7 +5,6 @@ export interface InventarioInv {
   cantidad_disponible: number
   ubicacion: string | null
   contenedor: string | null
-  valor_unitario_cop: number | null
   notas: string | null
   actualizado_at: string | null
 }
@@ -17,6 +16,7 @@ export interface InventarioFila {
   nombre_producto: string
   formato: string
   categoria: string | null
+  coste_almacen_cop: number | null // del maestro (referencias)
   inv: InventarioInv | null
 }
 
@@ -27,15 +27,16 @@ interface InventarioRaw {
   nombre_producto: string
   formato: string
   categoria: string | null
+  coste_almacen_cop: number | null
   // Relación 1-a-1 (índice único en referencia_id): objeto o null, no lista.
   inventario: InventarioInv | null
 }
 
-// Una fila por referencia (con su stock si existe).
+// Una fila por referencia (con su stock si existe y su coste del maestro).
 export async function listInventario(): Promise<InventarioFila[]> {
   const { data, error } = await supabase
     .from('referencias')
-    .select('id, codigo_interno, sku, nombre_producto, formato, categoria, inventario(id, cantidad_disponible, ubicacion, contenedor, valor_unitario_cop, notas, actualizado_at)')
+    .select('id, codigo_interno, sku, nombre_producto, formato, categoria, coste_almacen_cop, inventario(id, cantidad_disponible, ubicacion, contenedor, notas, actualizado_at)')
     .is('deleted_at', null)
     .order('nombre_producto')
     .returns<InventarioRaw[]>()
@@ -47,6 +48,7 @@ export async function listInventario(): Promise<InventarioFila[]> {
     nombre_producto: r.nombre_producto,
     formato: r.formato,
     categoria: r.categoria,
+    coste_almacen_cop: r.coste_almacen_cop,
     inv: r.inventario ?? null,
   }))
 }
@@ -55,7 +57,6 @@ export interface InventarioPatch {
   cantidad_disponible: number
   ubicacion: string | null
   contenedor: string | null
-  valor_unitario_cop: number | null
   notas: string | null
 }
 
@@ -67,6 +68,15 @@ export async function upsertInventario(referenciaId: string, patch: InventarioPa
       { referencia_id: referenciaId, ...patch, actualizado_at: new Date().toISOString() },
       { onConflict: 'referencia_id' },
     )
+  if (error) throw error
+}
+
+// El coste hasta almacén es un atributo del producto (maestro). Solo admin.
+export async function updateCosteReferencia(referenciaId: string, coste: number | null): Promise<void> {
+  const { error } = await supabase
+    .from('referencias')
+    .update({ coste_almacen_cop: coste })
+    .eq('id', referenciaId)
   if (error) throw error
 }
 

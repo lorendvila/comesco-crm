@@ -342,6 +342,7 @@ export type Database = {
           categoria: string | null
           codigo_facturacion_externo: string | null
           codigo_interno: string
+          coste_almacen_cop: number | null
           created_at: string | null
           deleted_at: string | null
           formato: string
@@ -360,6 +361,7 @@ export type Database = {
           categoria?: string | null
           codigo_facturacion_externo?: string | null
           codigo_interno?: string
+          coste_almacen_cop?: number | null
           created_at?: string | null
           deleted_at?: string | null
           formato: string
@@ -378,6 +380,7 @@ export type Database = {
           categoria?: string | null
           codigo_facturacion_externo?: string | null
           codigo_interno?: string
+          coste_almacen_cop?: number | null
           created_at?: string | null
           deleted_at?: string | null
           formato?: string
@@ -403,7 +406,6 @@ export type Database = {
           notas: string | null
           referencia_id: string
           ubicacion: string | null
-          valor_unitario_cop: number | null
         }
         Insert: {
           actualizado_at?: string | null
@@ -425,7 +427,6 @@ export type Database = {
           notas?: string | null
           referencia_id?: string
           ubicacion?: string | null
-          valor_unitario_cop?: number | null
         }
         Relationships: []
       }

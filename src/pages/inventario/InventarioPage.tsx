@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { FormEvent } from 'react'
 import { useAuth } from '../../auth/AuthProvider'
-import { listInventario, upsertInventario } from '../../data/inventario'
+import { listInventario, upsertInventario, updateCosteReferencia } from '../../data/inventario'
 import type { InventarioFila } from '../../data/inventario'
 import { formatCOP, formatFechaHora } from '../../data/constants'
 
@@ -9,7 +9,7 @@ interface FormState {
   cantidad_disponible: string
   ubicacion: string
   contenedor: string
-  valor_unitario: string
+  coste: string
   notas: string
 }
 
@@ -25,7 +25,7 @@ export function InventarioPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [editando, setEditando] = useState<InventarioFila | null>(null)
-  const [form, setForm] = useState<FormState>({ cantidad_disponible: '', ubicacion: '', contenedor: '', valor_unitario: '', notas: '' })
+  const [form, setForm] = useState<FormState>({ cantidad_disponible: '', ubicacion: '', contenedor: '', coste: '', notas: '' })
 
   const cargar = () => {
     setLoading(true)
@@ -38,7 +38,7 @@ export function InventarioPage() {
   useEffect(cargar, [])
 
   const valorTotal = useMemo(
-    () => filas.reduce((s, f) => s + (f.inv ? f.inv.cantidad_disponible * (f.inv.valor_unitario_cop ?? 0) : 0), 0),
+    () => filas.reduce((s, f) => s + (f.inv ? f.inv.cantidad_disponible * (f.coste_almacen_cop ?? 0) : 0), 0),
     [filas],
   )
 
@@ -47,7 +47,7 @@ export function InventarioPage() {
       cantidad_disponible: f.inv ? String(f.inv.cantidad_disponible) : '',
       ubicacion: f.inv?.ubicacion ?? '',
       contenedor: f.inv?.contenedor ?? '',
-      valor_unitario: f.inv?.valor_unitario_cop == null ? '' : String(f.inv.valor_unitario_cop),
+      coste: f.coste_almacen_cop == null ? '' : String(f.coste_almacen_cop),
       notas: f.inv?.notas ?? '',
     })
     setEditando(f)
@@ -61,9 +61,9 @@ export function InventarioPage() {
         cantidad_disponible: num(form.cantidad_disponible),
         ubicacion: form.ubicacion.trim() || null,
         contenedor: form.contenedor.trim() || null,
-        valor_unitario_cop: form.valor_unitario === '' ? null : num(form.valor_unitario),
         notas: form.notas.trim() || null,
       })
+      await updateCosteReferencia(editando.referencia_id, form.coste === '' ? null : num(form.coste))
       setEditando(null)
       cargar()
     } catch {
@@ -101,6 +101,8 @@ export function InventarioPage() {
                 <th>Producto</th>
                 <th>Formato</th>
                 <th>Disponible</th>
+                <th>Coste ud.</th>
+                <th>Valor</th>
                 <th>Ubicación</th>
                 <th>Contenedor</th>
                 <th>Actualizado</th>
@@ -115,6 +117,8 @@ export function InventarioPage() {
                   <td>{f.nombre_producto}</td>
                   <td>{f.formato}</td>
                   <td>{f.inv ? f.inv.cantidad_disponible : 0}</td>
+                  <td>{formatCOP(f.coste_almacen_cop)}</td>
+                  <td>{formatCOP((f.inv?.cantidad_disponible ?? 0) * (f.coste_almacen_cop ?? 0))}</td>
                   <td>{f.inv?.ubicacion ?? '—'}</td>
                   <td>{f.inv?.contenedor ?? '—'}</td>
                   <td>{f.inv?.actualizado_at ? formatFechaHora(f.inv.actualizado_at) : '—'}</td>
@@ -138,8 +142,8 @@ export function InventarioPage() {
                 <input className="input" type="number" min="0" value={form.cantidad_disponible} onChange={(e) => setForm({ ...form, cantidad_disponible: e.target.value })} />
               </label>
               <label className="field">
-                <span className="field__label">Valor unitario (COP)</span>
-                <input className="input" type="number" min="0" value={form.valor_unitario} onChange={(e) => setForm({ ...form, valor_unitario: e.target.value })} />
+                <span className="field__label">Coste hasta almacén (COP)</span>
+                <input className="input" type="number" min="0" value={form.coste} onChange={(e) => setForm({ ...form, coste: e.target.value })} />
               </label>
               <label className="field">
                 <span className="field__label">Ubicación</span>
