@@ -11,6 +11,7 @@ import { ActividadPage } from './pages/actividad/ActividadPage'
 import { TareasPage } from './pages/tareas/TareasPage'
 import { PedidosPage } from './pages/pedidos/PedidosPage'
 import { InventarioPage } from './pages/inventario/InventarioPage'
+import { DashboardPage } from './pages/dashboard/DashboardPage'
 
 export default function App() {
   return (
@@ -18,7 +19,7 @@ export default function App() {
       <Route path="/login" element={<LoginPage />} />
       <Route element={<ProtectedRoute />}>
         <Route path="/" element={<AppShell />}>
-          <Route index element={<PlaceholderPage title="Dashboard" />} />
+          <Route index element={<DashboardPage />} />
           <Route path="clientes" element={<ClientesListPage />} />
           <Route path="clientes/nuevo" element={<NuevoClientePage />} />
           <Route path="clientes/:id" element={<ClienteFichaPage />} />
