@@ -3,7 +3,7 @@ import type { FormEvent } from 'react'
 import { useAuth } from '../../auth/AuthProvider'
 import { listInventario, upsertInventario, updateCosteReferencia } from '../../data/inventario'
 import type { InventarioFila } from '../../data/inventario'
-import { formatCOP, formatFechaHora } from '../../data/constants'
+import { formatCOP, formatFechaHora, colorFamilia } from '../../data/constants'
 
 interface FormState {
   cantidad_disponible: string
@@ -114,7 +114,10 @@ export function InventarioPage() {
                 <tr key={f.referencia_id}>
                   <td className="mono">{f.codigo_interno}</td>
                   <td className="mono">{f.sku ?? '—'}</td>
-                  <td>{f.nombre_producto}</td>
+                  <td>
+                    <span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', background: colorFamilia(f.categoria), marginRight: 8 }} />
+                    {f.nombre_producto}
+                  </td>
                   <td>{f.formato}</td>
                   <td>{f.inv ? f.inv.cantidad_disponible : 0}</td>
                   <td>{formatCOP(f.coste_almacen_cop)}</td>

@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { getCliente } from '../../data/clientes'
 import type { Cliente } from '../../data/clientes'
-import { ESTADOS, labelDe } from '../../data/constants'
+import { ESTADOS, labelDe, colorEstadoCliente } from '../../data/constants'
+import { Badge } from '../../components/Badge'
 import { DatosTab } from './DatosTab'
 import { ContactosTab } from './ContactosTab'
 import { CondicionesTab } from './CondicionesTab'
@@ -45,7 +46,7 @@ export function ClienteFichaPage() {
         <Link to="/clientes" className="t-body-sm">← Clientes</Link>
         <div className="cluster cluster-3" style={{ marginTop: 8 }}>
           <h1 className="t-display">{cliente.nombre}</h1>
-          <span className="badge">{labelDe(ESTADOS, cliente.estado)}</span>
+          <Badge color={colorEstadoCliente(cliente.estado)}>{labelDe(ESTADOS, cliente.estado)}</Badge>
         </div>
         <p className="t-body-sm mono">{cliente.codigo_interno}</p>
       </div>

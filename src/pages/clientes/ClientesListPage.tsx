@@ -2,7 +2,8 @@ import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { listClientes } from '../../data/clientes'
 import type { ClienteResumen } from '../../data/clientes'
-import { CANALES, ESTADOS, labelDe } from '../../data/constants'
+import { CANALES, ESTADOS, labelDe, colorEstadoCliente } from '../../data/constants'
+import { Badge } from '../../components/Badge'
 
 export function ClientesListPage() {
   const navigate = useNavigate()
@@ -70,7 +71,7 @@ export function ClientesListPage() {
                   <td className="mono">{c.codigo_interno}</td>
                   <td>{c.nombre}</td>
                   <td>{labelDe(CANALES, c.canal)}</td>
-                  <td><span className="badge">{labelDe(ESTADOS, c.estado)}</span></td>
+                  <td><Badge color={colorEstadoCliente(c.estado)}>{labelDe(ESTADOS, c.estado)}</Badge></td>
                   <td>{c.ciudad ?? '—'}</td>
                 </tr>
               ))}

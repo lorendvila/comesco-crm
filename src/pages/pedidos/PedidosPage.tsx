@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
-import { CANALES_ORIGEN, ESTADOS_PEDIDO, formatCOP, formatFecha, labelDe } from '../../data/constants'
+import { CANALES_ORIGEN, ESTADOS_PEDIDO, formatCOP, formatFecha, labelDe, colorEstadoPedido } from '../../data/constants'
+import { Badge } from '../../components/Badge'
 import { listClientes } from '../../data/clientes'
 import type { ClienteResumen } from '../../data/clientes'
 import { listReferencias } from '../../data/referencias'
@@ -177,7 +178,7 @@ export function PedidosPage() {
                   <td>{formatFecha(p.fecha_pedido)}</td>
                   <td>{p.clientes?.nombre ?? '—'}</td>
                   <td>{labelDe(CANALES_ORIGEN, p.canal_origen)}</td>
-                  <td><span className="badge">{labelDe(ESTADOS_PEDIDO, p.estado)}</span></td>
+                  <td><Badge color={colorEstadoPedido(p.estado)}>{labelDe(ESTADOS_PEDIDO, p.estado)}</Badge></td>
                   <td>{formatCOP(p.total_cop)}</td>
                   <td><button className="btn btn-sm btn-outline" onClick={(e) => { e.stopPropagation(); abrirEdicion(p.id) }}>Ver</button></td>
                 </tr>

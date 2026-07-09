@@ -48,11 +48,13 @@ export function Sidebar() {
           ) : (
             <div key={entry.label} className="nav-group">
               <span className="nav-group__label">{entry.label}</span>
-              {entry.items.map((it) => (
-                <NavLink key={it.to} to={it.to} className={itemClass}>
-                  {it.label}
-                </NavLink>
-              ))}
+              <div className="nav-group__items">
+                {entry.items.map((it) => (
+                  <NavLink key={it.to} to={it.to} className={itemClass}>
+                    {it.label}
+                  </NavLink>
+                ))}
+              </div>
             </div>
           ),
         )}

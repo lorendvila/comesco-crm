@@ -63,6 +63,27 @@ export const COLOR_GOLD = '#D4C4A8'
 export const COLOR_VERDE = '#A6B187' // cobrado / ok
 export const COLOR_AMBAR = '#CFA079' // pendiente / atención
 export const COLOR_AZUL = '#8FB0C4' // informativo
+export const COLOR_GRIS = '#7C8794' // inactivo / cancelado
+
+const COLOR_ESTADO_CLIENTE: Record<string, string> = {
+  lead: COLOR_AZUL,
+  activo: COLOR_VERDE,
+  inactivo: COLOR_GRIS,
+}
+export function colorEstadoCliente(v: string): string {
+  return COLOR_ESTADO_CLIENTE[v] ?? COLOR_GOLD
+}
+
+const COLOR_ESTADO_PEDIDO: Record<string, string> = {
+  recibido: COLOR_AZUL,
+  entregado: '#C9AE7E',
+  facturado: COLOR_GOLD,
+  cobrado: COLOR_VERDE,
+  cancelado: COLOR_GRIS,
+}
+export function colorEstadoPedido(v: string): string {
+  return COLOR_ESTADO_PEDIDO[v] ?? COLOR_GOLD
+}
 
 export const TIPOS_ACTIVIDAD = [
   { value: 'llamada', label: 'Llamada' },
