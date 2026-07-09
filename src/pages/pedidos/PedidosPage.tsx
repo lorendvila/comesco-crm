@@ -29,6 +29,11 @@ function toCab(p: PedidoConLineas): CabeceraState {
     canal_origen: p.canal_origen,
     estado: p.estado,
     notas: p.notas ?? '',
+    numero_factura: p.numero_factura ?? '',
+    valor_factura: p.valor_factura == null ? '' : String(p.valor_factura),
+    pagado: p.pagado == null ? '' : String(p.pagado),
+    fecha_vencimiento: p.fecha_vencimiento ?? '',
+    fecha_pago: p.fecha_pago ?? '',
   }
 }
 
@@ -84,11 +89,13 @@ export function PedidosPage() {
     const data = await listPedidosExport(filtro)
     downloadCSV(
       `pedidos_${hoyISO()}.csv`,
-      ['Recepción', 'Entrega', 'Factura', 'Cliente', 'Razón social', 'Canal', 'Estado', 'Total COP'],
+      ['Recepción', 'Entrega', 'Factura', 'Vencimiento', 'Fecha pago', 'Cliente', 'Razón social', 'Canal', 'Estado', 'Total COP', 'Nº factura', 'Valor factura', 'Pagado', 'Saldo'],
       data.map((p) => [
-        p.fecha_pedido, p.fecha_entrega, p.fecha_factura,
+        p.fecha_pedido, p.fecha_entrega, p.fecha_factura, p.fecha_vencimiento, p.fecha_pago,
         p.clientes?.nombre ?? '', p.clientes?.razon_social ?? '',
         labelDe(CANALES_ORIGEN, p.canal_origen), labelDe(ESTADOS_PEDIDO, p.estado), p.total_cop,
+        p.numero_factura ?? '', p.valor_factura, p.pagado,
+        p.valor_factura == null ? '' : p.valor_factura - (p.pagado ?? 0),
       ]),
     )
   }

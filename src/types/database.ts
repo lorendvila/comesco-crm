@@ -252,11 +252,16 @@ export type Database = {
           estado: string
           fecha_entrega: string | null
           fecha_factura: string | null
+          fecha_pago: string | null
           fecha_pedido: string
+          fecha_vencimiento: string | null
           id: string
           notas: string | null
+          numero_factura: string | null
+          pagado: number | null
           total_cop: number | null
           updated_at: string | null
+          valor_factura: number | null
         }
         Insert: {
           canal_origen?: string
@@ -266,11 +271,16 @@ export type Database = {
           estado?: string
           fecha_entrega?: string | null
           fecha_factura?: string | null
+          fecha_pago?: string | null
           fecha_pedido?: string
+          fecha_vencimiento?: string | null
           id?: string
           notas?: string | null
+          numero_factura?: string | null
+          pagado?: number | null
           total_cop?: number | null
           updated_at?: string | null
+          valor_factura?: number | null
         }
         Update: {
           canal_origen?: string
@@ -280,11 +290,16 @@ export type Database = {
           estado?: string
           fecha_entrega?: string | null
           fecha_factura?: string | null
+          fecha_pago?: string | null
           fecha_pedido?: string
+          fecha_vencimiento?: string | null
           id?: string
           notas?: string | null
+          numero_factura?: string | null
+          pagado?: number | null
           total_cop?: number | null
           updated_at?: string | null
+          valor_factura?: number | null
         }
         Relationships: []
       }

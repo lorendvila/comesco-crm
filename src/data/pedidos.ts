@@ -58,6 +58,11 @@ interface PedidoExport {
   fecha_pedido: string
   fecha_entrega: string | null
   fecha_factura: string | null
+  fecha_vencimiento: string | null
+  fecha_pago: string | null
+  numero_factura: string | null
+  valor_factura: number | null
+  pagado: number | null
   canal_origen: string
   estado: string
   total_cop: number | null
@@ -89,7 +94,7 @@ function aplicarFiltros<T>(q: T & { gte: Function; lte: Function; eq: Function }
 export async function listPedidosExport(f: FiltroPedidos): Promise<PedidoExport[]> {
   const base = supabase
     .from('pedidos')
-    .select('fecha_pedido, fecha_entrega, fecha_factura, canal_origen, estado, total_cop, clientes(nombre, razon_social)')
+    .select('fecha_pedido, fecha_entrega, fecha_factura, fecha_vencimiento, fecha_pago, numero_factura, valor_factura, pagado, canal_origen, estado, total_cop, clientes(nombre, razon_social)')
     .order('fecha_pedido', { ascending: false })
   const { data, error } = await aplicarFiltros(base, f).returns<PedidoExport[]>()
   if (error) throw error

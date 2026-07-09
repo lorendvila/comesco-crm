@@ -15,6 +15,11 @@ export interface CabeceraState {
   canal_origen: string
   estado: string
   notas: string
+  numero_factura: string
+  valor_factura: string
+  pagado: string
+  fecha_vencimiento: string
+  fecha_pago: string
 }
 
 export interface LineaState {
@@ -34,6 +39,11 @@ export function cabeceraVacia(): CabeceraState {
     canal_origen: 'whatsapp',
     estado: 'recibido',
     notas: '',
+    numero_factura: '',
+    valor_factura: '',
+    pagado: '',
+    fecha_vencimiento: '',
+    fecha_pago: '',
   }
 }
 
@@ -75,12 +85,17 @@ export function PedidoForm({ clientes, referencias, initialCab, initialLineas, s
 
   const total = useMemo(() => lineas.reduce((s, l) => s + num(l.cantidad) * num(l.precio), 0), [lineas])
 
-  const pagoPrevisto = useMemo(() => {
+  const vencSugerido = useMemo(() => {
     if (!cab.fecha_factura || plazo == null) return null
     const d = new Date(cab.fecha_factura + 'T00:00:00')
     d.setDate(d.getDate() + plazo)
-    return d.toLocaleDateString('es-CO', { dateStyle: 'medium' })
+    return d.toISOString().slice(0, 10)
   }, [cab.fecha_factura, plazo])
+
+  const saldo = useMemo(() => {
+    if (cab.valor_factura === '') return null
+    return num(cab.valor_factura) - num(cab.pagado)
+  }, [cab.valor_factura, cab.pagado])
 
   const setLinea = (i: number, patch: Partial<LineaState>) =>
     setLineas((ls) => ls.map((l, idx) => (idx === i ? { ...l, ...patch } : l)))
@@ -113,6 +128,11 @@ export function PedidoForm({ clientes, referencias, initialCab, initialLineas, s
           canal_origen: cab.canal_origen,
           estado: cab.estado,
           notas: cab.notas.trim() || null,
+          numero_factura: cab.numero_factura.trim() || null,
+          valor_factura: cab.valor_factura === '' ? null : num(cab.valor_factura),
+          pagado: cab.pagado === '' ? null : num(cab.pagado),
+          fecha_vencimiento: cab.fecha_vencimiento || null,
+          fecha_pago: cab.fecha_pago || null,
         },
         lineas: validas.map((l) => ({
           referencia_id: l.referencia_id,
@@ -164,12 +184,6 @@ export function PedidoForm({ clientes, referencias, initialCab, initialLineas, s
           <span className="field__label">Factura (opcional)</span>
           <input className="input" type="date" value={cab.fecha_factura} onChange={(e) => setC({ fecha_factura: e.target.value })} />
         </label>
-        {pagoPrevisto && (
-          <div className="field">
-            <span className="field__label">Pago previsto</span>
-            <span className="t-body">{pagoPrevisto} <span className="t-caption">(factura + {plazo} días)</span></span>
-          </div>
-        )}
         <label className="field field--full">
           <span className="field__label">Notas</span>
           <textarea className="textarea" value={cab.notas} onChange={(e) => setC({ notas: e.target.value })} />
@@ -201,6 +215,41 @@ export function PedidoForm({ clientes, referencias, initialCab, initialLineas, s
         <div className="cluster cluster-2" style={{ justifyContent: 'flex-end' }}>
           <span className="t-label">Total</span>
           <span className="t-heading">{formatCOP(total)}</span>
+        </div>
+      </div>
+
+      <div className="stack stack-2">
+        <span className="t-label">Cobro</span>
+        <div className="form-grid">
+          <label className="field">
+            <span className="field__label">Nº de factura</span>
+            <input className="input" value={cab.numero_factura} onChange={(e) => setC({ numero_factura: e.target.value })} />
+          </label>
+          <div className="field">
+            <span className="field__label">Saldo</span>
+            <span className="t-body">{saldo == null ? '—' : formatCOP(saldo)}</span>
+          </div>
+          <label className="field">
+            <span className="field__label">Valor factura (COP)</span>
+            <input className="input" type="number" min="0" value={cab.valor_factura} onChange={(e) => setC({ valor_factura: e.target.value })} />
+          </label>
+          <label className="field">
+            <span className="field__label">Pagado (COP)</span>
+            <input className="input" type="number" min="0" value={cab.pagado} onChange={(e) => setC({ pagado: e.target.value })} />
+          </label>
+          <label className="field">
+            <span className="field__label">Vencimiento</span>
+            <input className="input" type="date" value={cab.fecha_vencimiento} onChange={(e) => setC({ fecha_vencimiento: e.target.value })} />
+            {vencSugerido && cab.fecha_vencimiento !== vencSugerido && (
+              <button type="button" className="btn btn-sm btn-outline" style={{ marginTop: 'var(--sp-1)' }} onClick={() => setC({ fecha_vencimiento: vencSugerido })}>
+                Sugerir: factura + {plazo} días
+              </button>
+            )}
+          </label>
+          <label className="field">
+            <span className="field__label">Fecha de pago</span>
+            <input className="input" type="date" value={cab.fecha_pago} onChange={(e) => setC({ fecha_pago: e.target.value })} />
+          </label>
         </div>
       </div>
 
