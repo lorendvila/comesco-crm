@@ -234,6 +234,38 @@ a { color: inherit; text-decoration: none; }
   min-width: 4px;
 }
 
+/* Barra en línea: nombre · barra · valor (Producto) */
+.hbar-inline {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  margin-bottom: var(--sp-3);
+  font-size: var(--text-md);
+}
+.hbar-inline__name {
+  width: 88px;
+  flex-shrink: 0;
+  color: var(--text-3);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.hbar-inline .hbar { flex: 1 1 auto; min-width: 0; }
+.hbar-inline__val {
+  width: 52px;
+  flex-shrink: 0;
+  text-align: right;
+  color: var(--text-1);
+}
+
+/* Nombre de referencia en una sola línea (tabla top referencias) */
+.data-table td.ref-name {
+  max-width: 240px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 /* ---- Placeholder ---- */
 .placeholder {
   display: flex;

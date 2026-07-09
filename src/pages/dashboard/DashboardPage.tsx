@@ -3,20 +3,33 @@ import { useAuth } from '../../auth/AuthProvider'
 import { listClientes } from '../../data/clientes'
 import { listOportunidades } from '../../data/oportunidades'
 import { listPedidosExport } from '../../data/pedidos'
-import { listTareas } from '../../data/tareas'
 import { listInventario } from '../../data/inventario'
 import { resumenProducto } from '../../data/informes'
 import type { RefVenta } from '../../data/informes'
 import {
   CANALES,
-  ETAPAS_ABIERTAS,
-  formatCOP,
+  ETAPAS,
+  formatCOPcorto,
   colorFamilia,
   COLOR_GOLD,
   COLOR_VERDE,
   COLOR_AMBAR,
   COLOR_AZUL,
 } from '../../data/constants'
+
+const ETAPA_COLOR: Record<string, string> = {
+  prospeccion: '#A2946F',
+  negociacion: '#C9AE7E',
+  cierre_ganado: '#ECC978',
+  cierre_perdido: '#7C8794',
+}
+
+interface BarItem {
+  name: string
+  val: number
+  text: string
+  color: string
+}
 
 interface Metricas {
   facturado: number
@@ -25,12 +38,9 @@ interface Metricas {
   margen: number
   margenPct: number
   valorInventario: number
-  pipelinePonderado: number
-  oportAbiertas: number
-  leads: number
-  activos: number
-  porCanal: { label: string; n: number }[]
-  porFamilia: { categoria: string; unidades: number }[]
+  pipelinePorEtapa: BarItem[]
+  porCanal: BarItem[]
+  porFamilia: BarItem[]
   topReferencias: RefVenta[]
   sinStock: number
 }
@@ -45,7 +55,8 @@ function Kpi({ label, value, accent, sub }: { label: string; value: string; acce
   )
 }
 
-function Barras({ items }: { items: { name: string; val: number; color: string; fmt?: (n: number) => string }[] }) {
+// Barra apilada: nombre + valor arriba, barra debajo (Comercial).
+function BarrasStack({ items }: { items: BarItem[] }) {
   const max = Math.max(1, ...items.map((i) => i.val))
   return (
     <div>
@@ -53,11 +64,25 @@ function Barras({ items }: { items: { name: string; val: number; color: string; 
         <div key={i.name} className="hbar-row">
           <div className="hbar-row__head">
             <span className="hbar-row__name">{i.name}</span>
-            <span className="hbar-row__val">{i.fmt ? i.fmt(i.val) : i.val}</span>
+            <span className="hbar-row__val">{i.text}</span>
           </div>
-          <div className="hbar">
-            <div className="hbar__fill" style={{ width: `${(i.val / max) * 100}%`, background: i.color }} />
-          </div>
+          <div className="hbar"><div className="hbar__fill" style={{ width: `${(i.val / max) * 100}%`, background: i.color }} /></div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+// Barra en línea: nombre · barra · valor (Producto).
+function BarrasInline({ items }: { items: BarItem[] }) {
+  const max = Math.max(1, ...items.map((i) => i.val))
+  return (
+    <div>
+      {items.map((i) => (
+        <div key={i.name} className="hbar-inline">
+          <span className="hbar-inline__name">{i.name}</span>
+          <div className="hbar"><div className="hbar__fill" style={{ width: `${(i.val / max) * 100}%`, background: i.color }} /></div>
+          <span className="hbar-inline__val">{i.text}</span>
         </div>
       ))}
     </div>
@@ -73,17 +98,8 @@ export function DashboardPage() {
 
   useEffect(() => {
     const hoy = new Date().toISOString().slice(0, 10)
-    Promise.all([
-      listClientes(),
-      listOportunidades(),
-      listPedidosExport({}),
-      listTareas(),
-      listInventario(),
-      resumenProducto(),
-    ])
-      .then(([clientes, ops, pedidos, tareas, inventario, prod]) => {
-        void tareas
-        const abiertas = ops.filter((o) => ETAPAS_ABIERTAS.includes(o.etapa))
+    Promise.all([listClientes(), listOportunidades(), listPedidosExport({}), listInventario(), resumenProducto()])
+      .then(([clientes, ops, pedidos, inventario, prod]) => {
         const margen = prod.totalRevenue - prod.totalCogs
         setM({
           facturado: pedidos.reduce((s, p) => s + (p.valor_factura ?? 0), 0),
@@ -95,12 +111,15 @@ export function DashboardPage() {
           margen,
           margenPct: prod.totalRevenue > 0 ? margen / prod.totalRevenue : 0,
           valorInventario: inventario.reduce((s, f) => s + (f.inv ? f.inv.cantidad_disponible * (f.coste_almacen_cop ?? 0) : 0), 0),
-          pipelinePonderado: abiertas.reduce((s, o) => s + (o.valor_estimado ?? 0) * ((o.probabilidad_cierre ?? 0) / 100), 0),
-          oportAbiertas: abiertas.length,
-          leads: clientes.filter((c) => c.estado === 'lead').length,
-          activos: clientes.filter((c) => c.estado === 'activo').length,
-          porCanal: CANALES.map((c) => ({ label: c.label, n: clientes.filter((cl) => cl.canal === c.value).length })),
-          porFamilia: prod.porFamilia,
+          pipelinePorEtapa: ETAPAS.map((et) => {
+            const valor = ops.filter((o) => o.etapa === et.value).reduce((s, o) => s + (o.valor_estimado ?? 0), 0)
+            return { name: et.label, val: valor, text: formatCOPcorto(valor), color: ETAPA_COLOR[et.value] }
+          }),
+          porCanal: CANALES.map((c) => {
+            const n = clientes.filter((cl) => cl.canal === c.value).length
+            return { name: c.label, val: n, text: String(n), color: COLOR_AZUL }
+          }),
+          porFamilia: prod.porFamilia.map((f) => ({ name: f.categoria, val: f.unidades, text: String(f.unidades), color: colorFamilia(f.categoria) })),
           topReferencias: prod.topReferencias,
           sinStock: inventario.filter((f) => !f.inv || f.inv.cantidad_disponible <= 0).length,
         })
@@ -126,24 +145,24 @@ export function DashboardPage() {
           <section>
             <div className="block-label" style={{ color: COLOR_AZUL }}>Financiero</div>
             <div className="grid-auto">
-              <Kpi label="Facturado" value={formatCOP(m.facturado)} accent={COLOR_GOLD} />
-              <Kpi label="Pendiente de cobro" value={formatCOP(m.pendiente)} accent={COLOR_AMBAR}
-                sub={m.vencido > 0 ? `${formatCOP(m.vencido)} vencido` : 'sin vencidos'} />
-              <Kpi label="Margen bruto" value={pct(m.margenPct)} accent={COLOR_VERDE} sub={formatCOP(m.margen)} />
-              <Kpi label="Valor inventario" value={formatCOP(m.valorInventario)} accent={COLOR_AZUL} />
+              <Kpi label="Facturado" value={formatCOPcorto(m.facturado)} accent={COLOR_GOLD} />
+              <Kpi label="Pendiente de cobro" value={formatCOPcorto(m.pendiente)} accent={COLOR_AMBAR}
+                sub={m.vencido > 0 ? `${formatCOPcorto(m.vencido)} vencido` : 'sin vencidos'} />
+              <Kpi label="Margen bruto" value={pct(m.margenPct)} accent={COLOR_VERDE} sub={formatCOPcorto(m.margen)} />
+              <Kpi label="Valor inventario" value={formatCOPcorto(m.valorInventario)} accent={COLOR_AZUL} />
             </div>
           </section>
 
           <section>
             <div className="block-label" style={{ color: COLOR_AZUL }}>Comercial</div>
-            <div className="grid-auto">
-              <Kpi label="Proyección pipeline" value={formatCOP(m.pipelinePonderado)} accent={COLOR_GOLD}
-                sub={`${m.oportAbiertas} oportunidades abiertas`} />
-              <Kpi label="Clientes activos" value={String(m.activos)} accent={COLOR_VERDE}
-                sub={`${m.leads} leads por convertir`} />
+            <div className="grid-2">
+              <div className="panel">
+                <div className="panel__title">Pipeline por etapa</div>
+                <BarrasStack items={m.pipelinePorEtapa} />
+              </div>
               <div className="panel">
                 <div className="panel__title">Clientes por canal</div>
-                <Barras items={m.porCanal.map((c) => ({ name: c.label, val: c.n, color: COLOR_AZUL }))} />
+                <BarrasStack items={m.porCanal} />
               </div>
             </div>
           </section>
@@ -153,11 +172,9 @@ export function DashboardPage() {
             <div className="grid-2">
               <div className="panel">
                 <div className="panel__title">Unidades vendidas por familia</div>
-                {m.porFamilia.length === 0 ? (
-                  <p className="t-body-sm">Sin ventas registradas todavía.</p>
-                ) : (
-                  <Barras items={m.porFamilia.map((f) => ({ name: f.categoria, val: f.unidades, color: colorFamilia(f.categoria) }))} />
-                )}
+                {m.porFamilia.length === 0
+                  ? <p className="t-body-sm">Sin ventas registradas todavía.</p>
+                  : <BarrasInline items={m.porFamilia} />}
               </div>
               <div className="panel">
                 <div className="panel__title">Top referencias</div>
@@ -171,12 +188,12 @@ export function DashboardPage() {
                     <tbody>
                       {m.topReferencias.map((r) => (
                         <tr key={r.nombre + r.formato}>
-                          <td>
-                            <span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', background: colorFamilia(r.categoria), marginRight: 8 }} />
+                          <td className="ref-name">
+                            <span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', background: colorFamilia(r.categoria), marginRight: 8, flexShrink: 0 }} />
                             {r.nombre} · {r.formato}
                           </td>
                           <td style={{ textAlign: 'right' }}>{r.unidades}</td>
-                          <td style={{ textAlign: 'right' }}>{formatCOP(r.valor)}</td>
+                          <td style={{ textAlign: 'right' }}>{formatCOPcorto(r.valor)}</td>
                         </tr>
                       ))}
                     </tbody>

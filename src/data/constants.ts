@@ -41,6 +41,15 @@ export function formatCOP(n: number | null | undefined): string {
   return copFmt.format(n)
 }
 
+// Formato corto para dashboards: $177,8M · $27,8M · $950k
+export function formatCOPcorto(n: number | null | undefined): string {
+  if (n == null) return '—'
+  const abs = Math.abs(n)
+  if (abs >= 1e6) return '$' + (n / 1e6).toLocaleString('es-CO', { maximumFractionDigits: 1 }) + 'M'
+  if (abs >= 1e3) return '$' + (n / 1e3).toLocaleString('es-CO', { maximumFractionDigits: 0 }) + 'k'
+  return '$' + n.toLocaleString('es-CO', { maximumFractionDigits: 0 })
+}
+
 // Color por familia de producto (categoría). Tonos apagados que casan con la
 // paleta (azul pizarra + arena). Se usan en gráficos, puntos de tabla, etc.
 const COLOR_FAMILIA: Record<string, string> = {
