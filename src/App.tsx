@@ -11,6 +11,7 @@ import { SeguimientoPage } from './pages/seguimiento/SeguimientoPage'
 import { PedidosPage } from './pages/pedidos/PedidosPage'
 import { InventarioPage } from './pages/inventario/InventarioPage'
 import { DashboardPage } from './pages/dashboard/DashboardPage'
+import { InformesPage } from './pages/informes/InformesPage'
 
 export default function App() {
   return (
@@ -26,7 +27,7 @@ export default function App() {
           <Route path="seguimiento" element={<SeguimientoPage />} />
           <Route path="pedidos" element={<PedidosPage />} />
           <Route path="inventario" element={<InventarioPage />} />
-          <Route path="informes" element={<PlaceholderPage title="Informes" />} />
+          <Route path="informes" element={<InformesPage />} />
         </Route>
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
