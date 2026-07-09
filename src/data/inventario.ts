@@ -27,7 +27,8 @@ interface InventarioRaw {
   nombre_producto: string
   formato: string
   categoria: string | null
-  inventario: InventarioInv[]
+  // Relación 1-a-1 (índice único en referencia_id): objeto o null, no lista.
+  inventario: InventarioInv | null
 }
 
 // Una fila por referencia (con su stock si existe).
@@ -46,7 +47,7 @@ export async function listInventario(): Promise<InventarioFila[]> {
     nombre_producto: r.nombre_producto,
     formato: r.formato,
     categoria: r.categoria,
-    inv: r.inventario[0] ?? null,
+    inv: r.inventario ?? null,
   }))
 }
 
