@@ -41,6 +41,29 @@ export function formatCOP(n: number | null | undefined): string {
   return copFmt.format(n)
 }
 
+// Color por familia de producto (categoría). Tonos apagados que casan con la
+// paleta (azul pizarra + arena). Se usan en gráficos, puntos de tabla, etc.
+const COLOR_FAMILIA: Record<string, string> = {
+  Aceite: '#D8C393',
+  Aceitunas: '#A6B187',
+  Vino: '#B98A96',
+  Vinagre: '#CFA079',
+  Tomate: '#C98A7E',
+  Arroz: '#CDBE95',
+  Queso: '#E2D9C6',
+  Charcutería: '#B7A2AE',
+}
+
+export function colorFamilia(categoria: string | null): string {
+  return (categoria && COLOR_FAMILIA[categoria]) || '#8FB0C4'
+}
+
+// Colores con significado (semánticos), para KPIs y estados.
+export const COLOR_GOLD = '#D4C4A8'
+export const COLOR_VERDE = '#A6B187' // cobrado / ok
+export const COLOR_AMBAR = '#CFA079' // pendiente / atención
+export const COLOR_AZUL = '#8FB0C4' // informativo
+
 export const TIPOS_ACTIVIDAD = [
   { value: 'llamada', label: 'Llamada' },
   { value: 'email', label: 'Email' },
