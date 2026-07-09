@@ -51,11 +51,13 @@ function Barras({ items }: { items: { name: string; val: number; color: string; 
     <div>
       {items.map((i) => (
         <div key={i.name} className="hbar-row">
-          <span className="hbar-row__name" style={{ width: 92 }}>{i.name}</span>
-          <span className="hbar">
-            <span className="hbar__fill" style={{ width: `${(i.val / max) * 100}%`, background: i.color }} />
-          </span>
-          <span className="hbar-row__val" style={{ width: 56 }}>{i.fmt ? i.fmt(i.val) : i.val}</span>
+          <div className="hbar-row__head">
+            <span className="hbar-row__name">{i.name}</span>
+            <span className="hbar-row__val">{i.fmt ? i.fmt(i.val) : i.val}</span>
+          </div>
+          <div className="hbar">
+            <div className="hbar__fill" style={{ width: `${(i.val / max) * 100}%`, background: i.color }} />
+          </div>
         </div>
       ))}
     </div>

@@ -210,22 +210,29 @@ a { color: inherit; text-decoration: none; }
 }
 
 .hbar-row {
-  display: flex;
-  align-items: center;
-  gap: var(--sp-3);
-  font-size: var(--text-md);
   margin-bottom: var(--sp-3);
 }
-.hbar-row__name { color: var(--text-3); flex-shrink: 0; }
+.hbar-row__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: var(--sp-1);
+  font-size: var(--text-md);
+}
+.hbar-row__name { color: var(--text-3); }
+.hbar-row__val { color: var(--text-1); }
 .hbar {
-  flex: 1;
   height: 10px;
   background: var(--bg-sunken);
   border-radius: 5px;
   overflow: hidden;
 }
-.hbar__fill { height: 10px; border-radius: 5px; }
-.hbar-row__val { color: var(--text-2); flex-shrink: 0; text-align: right; }
+.hbar__fill {
+  display: block;
+  height: 10px;
+  border-radius: 5px;
+  min-width: 4px;
+}
 
 /* ---- Placeholder ---- */
 .placeholder {
