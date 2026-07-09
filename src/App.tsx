@@ -7,8 +7,7 @@ import { ClientesListPage } from './pages/clientes/ClientesListPage'
 import { NuevoClientePage } from './pages/clientes/NuevoClientePage'
 import { ClienteFichaPage } from './pages/clientes/ClienteFichaPage'
 import { PipelinePage } from './pages/pipeline/PipelinePage'
-import { ActividadPage } from './pages/actividad/ActividadPage'
-import { TareasPage } from './pages/tareas/TareasPage'
+import { SeguimientoPage } from './pages/seguimiento/SeguimientoPage'
 import { PedidosPage } from './pages/pedidos/PedidosPage'
 import { InventarioPage } from './pages/inventario/InventarioPage'
 import { DashboardPage } from './pages/dashboard/DashboardPage'
@@ -24,8 +23,7 @@ export default function App() {
           <Route path="clientes/nuevo" element={<NuevoClientePage />} />
           <Route path="clientes/:id" element={<ClienteFichaPage />} />
           <Route path="pipeline" element={<PipelinePage />} />
-          <Route path="actividad" element={<ActividadPage />} />
-          <Route path="tareas" element={<TareasPage />} />
+          <Route path="seguimiento" element={<SeguimientoPage />} />
           <Route path="pedidos" element={<PedidosPage />} />
           <Route path="inventario" element={<InventarioPage />} />
           <Route path="informes" element={<PlaceholderPage title="Informes" />} />

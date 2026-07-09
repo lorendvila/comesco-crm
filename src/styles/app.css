@@ -327,6 +327,10 @@ select.input {
 }
 .mono { font-family: var(--font-mono); color: var(--text-3); }
 
+/* Tabla no-clicable (filas sin cursor de enlace) */
+.data-table--plain tbody tr { cursor: default; }
+.link-cliente:hover { color: var(--accent); }
+
 /* ---- Formularios ---- */
 .form-grid {
   display: grid;

@@ -13,8 +13,7 @@ const NAV: NavEntry[] = [
     label: 'Comercial',
     items: [
       { to: '/pipeline', label: 'Pipeline' },
-      { to: '/actividad', label: 'Actividad' },
-      { to: '/tareas', label: 'Tareas' },
+      { to: '/seguimiento', label: 'Seguimiento' },
     ],
   },
   {
