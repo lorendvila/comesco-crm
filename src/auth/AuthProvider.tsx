@@ -8,6 +8,7 @@ export interface Profile {
   full_name: string
   email: string
   role: 'admin' | 'comercial'
+  is_active: boolean
 }
 
 interface AuthContextValue {
@@ -45,7 +46,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     supabase
       .from('users')
-      .select('id, full_name, email, role')
+      .select('id, full_name, email, role, is_active')
       .eq('auth_user_id', session.user.id)
       .maybeSingle()
       .then(({ data }) => setProfile((data as Profile) ?? null))

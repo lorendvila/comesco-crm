@@ -1,7 +1,8 @@
 import { NavLink } from 'react-router-dom'
+import { useAuth } from '../auth/AuthProvider'
 
 type NavEntry =
-  | { type: 'link'; to: string; label: string; end?: boolean }
+  | { type: 'link'; to: string; label: string; end?: boolean; adminOnly?: boolean }
   | { type: 'group'; label: string; items: { to: string; label: string }[] }
 
 // Barra lateral = destinos. Agrupados en Comercial (seguimiento) y Operaciones.
@@ -26,12 +27,16 @@ const NAV: NavEntry[] = [
     ],
   },
   { type: 'link', to: '/informes', label: 'Informes' },
+  { type: 'link', to: '/usuarios', label: 'Usuarios', adminOnly: true },
 ]
 
 const itemClass = ({ isActive }: { isActive: boolean }) =>
   'nav-item' + (isActive ? ' nav-item--active' : '')
 
 export function Sidebar() {
+  const { profile } = useAuth()
+  const isAdmin = profile?.role === 'admin'
+  const nav = NAV.filter((e) => e.type !== 'link' || !e.adminOnly || isAdmin)
   return (
     <aside className="sidebar">
       <div className="sidebar__brand">
@@ -39,7 +44,7 @@ export function Sidebar() {
         <span className="sidebar__brand-name">COMESCO</span>
       </div>
       <nav className="sidebar__nav">
-        {NAV.map((entry) =>
+        {nav.map((entry) =>
           entry.type === 'link' ? (
             <NavLink key={entry.to} to={entry.to} end={entry.end} className={itemClass}>
               {entry.label}

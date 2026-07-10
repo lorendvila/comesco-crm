@@ -12,6 +12,7 @@ import { PedidosPage } from './pages/pedidos/PedidosPage'
 import { InventarioPage } from './pages/inventario/InventarioPage'
 import { DashboardPage } from './pages/dashboard/DashboardPage'
 import { InformesPage } from './pages/informes/InformesPage'
+import { UsuariosPage } from './pages/usuarios/UsuariosPage'
 
 export default function App() {
   return (
@@ -28,6 +29,7 @@ export default function App() {
           <Route path="pedidos" element={<PedidosPage />} />
           <Route path="inventario" element={<InventarioPage />} />
           <Route path="informes" element={<InformesPage />} />
+          <Route path="usuarios" element={<UsuariosPage />} />
         </Route>
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
