@@ -17,8 +17,8 @@ export interface RefVenta {
 export interface ResumenProducto {
   porFamilia: FamiliaUnidades[]
   topReferencias: RefVenta[]
-  totalRevenue: number
-  totalCogs: number
+  totalRevenue: number // venta NETA (sin IVA) — base del margen
+  totalCogs: number // coste hasta almacén (neto)
 }
 
 interface LineaRaw {
@@ -29,6 +29,7 @@ interface LineaRaw {
     formato: string
     categoria: string | null
     coste_almacen_cop: number | null
+    iva_pct: number | null
   } | null
 }
 
@@ -37,7 +38,7 @@ interface LineaRaw {
 export async function resumenProducto(): Promise<ResumenProducto> {
   const { data, error } = await supabase
     .from('pedido_lineas')
-    .select('cantidad, subtotal_cop, referencias(nombre_producto, formato, categoria, coste_almacen_cop)')
+    .select('cantidad, subtotal_cop, referencias(nombre_producto, formato, categoria, coste_almacen_cop, iva_pct)')
     .returns<LineaRaw[]>()
   if (error) throw error
 
@@ -50,8 +51,9 @@ export async function resumenProducto(): Promise<ResumenProducto> {
     const r = l.referencias
     if (!r) continue
     const cat = r.categoria ?? 'Otros'
-    const valor = l.subtotal_cop ?? 0
-    totalRevenue += valor
+    const valor = l.subtotal_cop ?? 0 // importe facturado (con IVA), para las tablas de producto
+    // Para el margen, la venta debe ir SIN IVA (el coste ya es neto hasta almacén).
+    totalRevenue += valor / (1 + (r.iva_pct ?? 0) / 100)
     totalCogs += l.cantidad * (r.coste_almacen_cop ?? 0)
     familias.set(cat, (familias.get(cat) ?? 0) + l.cantidad)
     const key = `${r.nombre_producto} ${r.formato}`

@@ -148,7 +148,7 @@ export function DashboardPage() {
               <Kpi label="Facturado" value={formatCOPcorto(m.facturado)} accent={COLOR_GOLD} />
               <Kpi label="Pendiente de cobro" value={formatCOPcorto(m.pendiente)} accent={COLOR_AMBAR}
                 sub={m.vencido > 0 ? `${formatCOPcorto(m.vencido)} vencido` : 'sin vencidos'} />
-              <Kpi label="Margen bruto" value={pct(m.margenPct)} accent={COLOR_VERDE} sub={formatCOPcorto(m.margen)} />
+              <Kpi label="Margen bruto" value={pct(m.margenPct)} accent={m.margen >= 0 ? COLOR_VERDE : COLOR_AMBAR} sub={`${formatCOPcorto(m.margen)} · sin IVA`} />
               <Kpi label="Valor inventario" value={formatCOPcorto(m.valorInventario)} accent={COLOR_AZUL} />
             </div>
           </section>
