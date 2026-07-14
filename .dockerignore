@@ -1,0 +1,21 @@
+# No enviar al contexto de build (más rápido y evita pisar variables)
+node_modules
+dist
+dist-ssr
+.git
+.github
+.env
+.env.*
+!.env.example
+data
+*.xlsx
+*.log
+.vite
+.cache
+coverage
+.vscode
+.idea
+.DS_Store
+Thumbs.db
+supabase/.temp
+supabase/.branches
