@@ -258,6 +258,7 @@ export type Database = {
           id: string
           notas: string | null
           numero_factura: string | null
+          numero_pedido: string | null
           pagado: number | null
           total_cop: number | null
           updated_at: string | null
@@ -277,6 +278,7 @@ export type Database = {
           id?: string
           notas?: string | null
           numero_factura?: string | null
+          numero_pedido?: string | null
           pagado?: number | null
           total_cop?: number | null
           updated_at?: string | null
@@ -296,6 +298,7 @@ export type Database = {
           id?: string
           notas?: string | null
           numero_factura?: string | null
+          numero_pedido?: string | null
           pagado?: number | null
           total_cop?: number | null
           updated_at?: string | null
@@ -465,7 +468,11 @@ export type Database = {
       }
     }
     Views: Record<string, never>
-    Functions: Record<string, never>
+    Functions: {
+      current_user_id: { Args: Record<string, never>; Returns: string }
+      is_admin: { Args: Record<string, never>; Returns: boolean }
+      siguiente_numero_pedido: { Args: Record<string, never>; Returns: string }
+    }
     Enums: Record<string, never>
     CompositeTypes: Record<string, never>
   }

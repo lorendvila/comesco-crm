@@ -6,6 +6,7 @@ export type PedidoLinea = Tables<'pedido_lineas'>
 
 export interface PedidoResumen {
   id: string
+  numero_pedido: string | null
   fecha_pedido: string
   estado: string
   canal_origen: string
@@ -18,8 +19,17 @@ export interface LineaConRef extends PedidoLinea {
 }
 
 export interface PedidoConLineas extends Pedido {
+  numero_pedido: string | null
   clientes: { nombre: string } | null
   pedido_lineas: LineaConRef[]
+}
+
+// El número OC lo asigna la base de datos (trigger). Este RPC devuelve el
+// siguiente número para mostrarlo en el formulario antes de guardar.
+export async function siguienteNumeroPedido(): Promise<string> {
+  const { data, error } = await supabase.rpc('siguiente_numero_pedido')
+  if (error) throw error
+  return (data as string) ?? ''
 }
 
 export interface LineaInput {
@@ -42,7 +52,7 @@ export interface FiltroPedidos {
 export async function listPedidos(f: FiltroPedidos = {}): Promise<PedidoResumen[]> {
   let q = supabase
     .from('pedidos')
-    .select('id, fecha_pedido, estado, canal_origen, total_cop, clientes(nombre)')
+    .select('id, numero_pedido, fecha_pedido, estado, canal_origen, total_cop, clientes(nombre)')
     .order('fecha_pedido', { ascending: false })
   if (f.desde) q = q.gte('fecha_pedido', f.desde)
   if (f.hasta) q = q.lte('fecha_pedido', f.hasta)

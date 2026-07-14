@@ -11,13 +11,14 @@ export interface ClienteResumen {
   canal: string | null
   estado: string
   ciudad: string | null
+  direccion_entrega: string | null
   comercial_asignado_id: string | null
 }
 
 export async function listClientes(): Promise<ClienteResumen[]> {
   const { data, error } = await supabase
     .from('clientes')
-    .select('id, codigo_interno, nombre, canal, estado, ciudad, comercial_asignado_id')
+    .select('id, codigo_interno, nombre, canal, estado, ciudad, direccion_entrega, comercial_asignado_id')
     .is('deleted_at', null)
     .order('codigo_interno')
   if (error) throw error

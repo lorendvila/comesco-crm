@@ -14,6 +14,7 @@ import {
   deletePedido,
   listPedidosExport,
   listLineasExport,
+  siguienteNumeroPedido,
 } from '../../data/pedidos'
 import type { PedidoResumen, PedidoConLineas, FiltroPedidos } from '../../data/pedidos'
 import { PedidoForm, cabeceraVacia } from '../../components/PedidoForm'
@@ -58,7 +59,20 @@ export function PedidosPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [modal, setModal] = useState<Modal>(null)
+  const [nextNum, setNextNum] = useState<string>('')
   const [filtro, setFiltro] = useState<FiltroPedidos>({})
+
+  const refrescarStock = () => getStockMap().then(setStock).catch(() => {})
+
+  // Abre el modal de nuevo pedido tras pedir el siguiente número OC.
+  const abrirNuevo = async () => {
+    try {
+      setNextNum(await siguienteNumeroPedido())
+    } catch {
+      setNextNum('')
+    }
+    setModal({ mode: 'new' })
+  }
 
   // Catálogos (una vez)
   useEffect(() => {
@@ -128,7 +142,7 @@ export function PedidosPage() {
     <div className="stack stack-6">
       <div className="page-header">
         <h1 className="t-display">Pedidos</h1>
-        <button className="btn btn-primary" onClick={() => setModal({ mode: 'new' })}>Nuevo pedido</button>
+        <button className="btn btn-primary" onClick={abrirNuevo}>Nuevo pedido</button>
       </div>
 
       <div className="card stack stack-3">
@@ -164,6 +178,7 @@ export function PedidosPage() {
           <table className="data-table">
             <thead>
               <tr>
+                <th>Nº pedido</th>
                 <th>Recepción</th>
                 <th>Cliente</th>
                 <th>Canal</th>
@@ -175,6 +190,7 @@ export function PedidosPage() {
             <tbody>
               {pedidos.map((p) => (
                 <tr key={p.id} onClick={() => abrirEdicion(p.id)}>
+                  <td>{p.numero_pedido ?? '—'}</td>
                   <td>{formatFecha(p.fecha_pedido)}</td>
                   <td>{p.clientes?.nombre ?? '—'}</td>
                   <td>{labelDe(CANALES_ORIGEN, p.canal_origen)}</td>
@@ -184,7 +200,7 @@ export function PedidosPage() {
                 </tr>
               ))}
               {pedidos.length === 0 && (
-                <tr><td colSpan={6} className="t-body-sm">No hay pedidos con estos filtros.</td></tr>
+                <tr><td colSpan={7} className="t-body-sm">No hay pedidos con estos filtros.</td></tr>
               )}
             </tbody>
           </table>
@@ -194,9 +210,14 @@ export function PedidosPage() {
       {modal && (
         <div className="modal-overlay" onClick={() => setModal(null)}>
           <div className="modal modal--wide" onClick={(e) => e.stopPropagation()}>
-            <h2 className="t-heading" style={{ marginBottom: 'var(--sp-4)' }}>
-              {modal.mode === 'new' ? 'Nuevo pedido' : 'Pedido'}
-            </h2>
+            <div className="cluster" style={{ justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 'var(--sp-4)' }}>
+              <h2 className="t-heading">{modal.mode === 'new' ? 'Nuevo pedido' : 'Pedido'}</h2>
+              {(modal.mode === 'new' ? nextNum : modal.pedido.numero_pedido) && (
+                <span className="pedido-num" title={modal.mode === 'new' ? 'Se asignará al guardar' : undefined}>
+                  {modal.mode === 'new' ? nextNum : modal.pedido.numero_pedido}
+                </span>
+              )}
+            </div>
             <PedidoForm
               clientes={clientes}
               referencias={referencias}
@@ -210,6 +231,7 @@ export function PedidosPage() {
                 else await updatePedido(modal.pedido.id, cabecera, lineas)
                 setModal(null)
                 cargarPedidos()
+                refrescarStock()
               }}
               onDelete={
                 modal.mode === 'edit'
@@ -217,6 +239,7 @@ export function PedidosPage() {
                       await deletePedido(modal.pedido.id)
                       setModal(null)
                       cargarPedidos()
+                      refrescarStock()
                     }
                   : undefined
               }

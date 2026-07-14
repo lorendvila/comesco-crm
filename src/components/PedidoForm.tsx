@@ -75,6 +75,9 @@ export function PedidoForm({ clientes, referencias, stock, initialCab, initialLi
 
   const setC = (patch: Partial<CabeceraState>) => setCab((p) => ({ ...p, ...patch }))
 
+  // Cliente elegido, para mostrar su dirección de entrega en el pedido.
+  const clienteSel = clientes.find((c) => c.id === cab.cliente_id)
+
   // Plazo de pago del cliente (para la fecha de pago prevista)
   useEffect(() => {
     if (!cab.cliente_id) {
@@ -178,6 +181,16 @@ export function PedidoForm({ clientes, referencias, stock, initialCab, initialLi
             ))}
           </select>
         </label>
+        {clienteSel && (
+          <div className="field field--full">
+            <span className="field__label">Dirección de entrega</span>
+            <span className="t-body">
+              {clienteSel.direccion_entrega
+                ? clienteSel.direccion_entrega + (clienteSel.ciudad ? ` · ${clienteSel.ciudad}` : '')
+                : '— sin dirección en la ficha del cliente'}
+            </span>
+          </div>
+        )}
         <label className="field">
           <span className="field__label">Canal de origen</span>
           <select className="input" value={cab.canal_origen} onChange={(e) => setC({ canal_origen: e.target.value })}>
