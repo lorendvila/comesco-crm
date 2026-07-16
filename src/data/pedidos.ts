@@ -36,7 +36,9 @@ export interface LineaInput {
   referencia_id: string
   cantidad: number
   unidad: string
-  precio_unitario_cop: number | null
+  precio_unitario_cop: number | null // final unitario CON IVA (calculado)
+  precio_base_cop: number | null // tarifa neta del canal (antes de descuento)
+  descuento_pct: number | null // % descuento aplicado en la línea
 }
 
 function totalDe(lineas: LineaInput[]): number {
@@ -195,6 +197,8 @@ async function insertarLineas(pedidoId: string, lineas: LineaInput[]): Promise<v
     cantidad: l.cantidad,
     unidad: l.unidad,
     precio_unitario_cop: l.precio_unitario_cop,
+    precio_base_cop: l.precio_base_cop,
+    descuento_pct: l.descuento_pct,
     subtotal_cop: l.cantidad * (l.precio_unitario_cop ?? 0),
   }))
   const { error } = await supabase.from('pedido_lineas').insert(rows)

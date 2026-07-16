@@ -17,6 +17,9 @@ export interface InventarioFila {
   formato: string
   categoria: string | null
   coste_almacen_cop: number | null // del maestro (referencias)
+  precio_food_service_cop: number | null // tarifa neta por canal
+  precio_retail_cop: number | null
+  precio_industria_cop: number | null
   inv: InventarioInv | null
 }
 
@@ -28,6 +31,9 @@ interface InventarioRaw {
   formato: string
   categoria: string | null
   coste_almacen_cop: number | null
+  precio_food_service_cop: number | null
+  precio_retail_cop: number | null
+  precio_industria_cop: number | null
   // Relación 1-a-1 (índice único en referencia_id): objeto o null, no lista.
   inventario: InventarioInv | null
 }
@@ -36,7 +42,7 @@ interface InventarioRaw {
 export async function listInventario(): Promise<InventarioFila[]> {
   const { data, error } = await supabase
     .from('referencias')
-    .select('id, codigo_interno, sku, nombre_producto, formato, categoria, coste_almacen_cop, inventario(id, cantidad_disponible, ubicacion, contenedor, notas, actualizado_at)')
+    .select('id, codigo_interno, sku, nombre_producto, formato, categoria, coste_almacen_cop, precio_food_service_cop, precio_retail_cop, precio_industria_cop, inventario(id, cantidad_disponible, ubicacion, contenedor, notas, actualizado_at)')
     .is('deleted_at', null)
     .order('nombre_producto')
     .returns<InventarioRaw[]>()
@@ -49,8 +55,23 @@ export async function listInventario(): Promise<InventarioFila[]> {
     formato: r.formato,
     categoria: r.categoria,
     coste_almacen_cop: r.coste_almacen_cop,
+    precio_food_service_cop: r.precio_food_service_cop,
+    precio_retail_cop: r.precio_retail_cop,
+    precio_industria_cop: r.precio_industria_cop,
     inv: r.inventario ?? null,
   }))
+}
+
+export interface TarifasPatch {
+  precio_food_service_cop: number | null
+  precio_retail_cop: number | null
+  precio_industria_cop: number | null
+}
+
+// Tarifas base (netas) por canal — atributo del producto (maestro). Solo admin.
+export async function updateTarifasReferencia(referenciaId: string, tarifas: TarifasPatch): Promise<void> {
+  const { error } = await supabase.from('referencias').update(tarifas).eq('id', referenciaId)
+  if (error) throw error
 }
 
 export interface InventarioPatch {

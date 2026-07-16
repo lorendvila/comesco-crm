@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { FormEvent } from 'react'
 import { useAuth } from '../../auth/AuthProvider'
-import { listInventario, upsertInventario, updateCosteReferencia } from '../../data/inventario'
+import { listInventario, upsertInventario, updateCosteReferencia, updateTarifasReferencia } from '../../data/inventario'
 import type { InventarioFila } from '../../data/inventario'
 import { formatCOP, formatFechaHora, colorFamilia } from '../../data/constants'
 
@@ -11,7 +11,12 @@ interface FormState {
   contenedor: string
   coste: string
   notas: string
+  precioFs: string
+  precioRetail: string
+  precioIndustria: string
 }
+
+const strOrEmpty = (n: number | null) => (n == null ? '' : String(n))
 
 const num = (s: string) => {
   const n = Number(s)
@@ -25,7 +30,7 @@ export function InventarioPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [editando, setEditando] = useState<InventarioFila | null>(null)
-  const [form, setForm] = useState<FormState>({ cantidad_disponible: '', ubicacion: '', contenedor: '', coste: '', notas: '' })
+  const [form, setForm] = useState<FormState>({ cantidad_disponible: '', ubicacion: '', contenedor: '', coste: '', notas: '', precioFs: '', precioRetail: '', precioIndustria: '' })
 
   const cargar = () => {
     setLoading(true)
@@ -49,6 +54,9 @@ export function InventarioPage() {
       contenedor: f.inv?.contenedor ?? '',
       coste: f.coste_almacen_cop == null ? '' : String(f.coste_almacen_cop),
       notas: f.inv?.notas ?? '',
+      precioFs: strOrEmpty(f.precio_food_service_cop),
+      precioRetail: strOrEmpty(f.precio_retail_cop),
+      precioIndustria: strOrEmpty(f.precio_industria_cop),
     })
     setEditando(f)
   }
@@ -64,6 +72,11 @@ export function InventarioPage() {
         notas: form.notas.trim() || null,
       })
       await updateCosteReferencia(editando.referencia_id, form.coste === '' ? null : num(form.coste))
+      await updateTarifasReferencia(editando.referencia_id, {
+        precio_food_service_cop: form.precioFs === '' ? null : num(form.precioFs),
+        precio_retail_cop: form.precioRetail === '' ? null : num(form.precioRetail),
+        precio_industria_cop: form.precioIndustria === '' ? null : num(form.precioIndustria),
+      })
       setEditando(null)
       cargar()
     } catch {
@@ -148,6 +161,23 @@ export function InventarioPage() {
                 <span className="field__label">Coste hasta almacén (COP)</span>
                 <input className="input" type="number" min="0" value={form.coste} onChange={(e) => setForm({ ...form, coste: e.target.value })} />
               </label>
+              <div className="field field--full">
+                <span className="field__label">Tarifa base por canal (neto, sin IVA)</span>
+                <div className="cluster cluster-3">
+                  <label className="field" style={{ flex: 1 }}>
+                    <span className="t-caption">Food Service</span>
+                    <input className="input" type="number" min="0" value={form.precioFs} onChange={(e) => setForm({ ...form, precioFs: e.target.value })} />
+                  </label>
+                  <label className="field" style={{ flex: 1 }}>
+                    <span className="t-caption">Retail</span>
+                    <input className="input" type="number" min="0" value={form.precioRetail} onChange={(e) => setForm({ ...form, precioRetail: e.target.value })} />
+                  </label>
+                  <label className="field" style={{ flex: 1 }}>
+                    <span className="t-caption">Industria</span>
+                    <input className="input" type="number" min="0" value={form.precioIndustria} onChange={(e) => setForm({ ...form, precioIndustria: e.target.value })} />
+                  </label>
+                </div>
+              </div>
               <label className="field">
                 <span className="field__label">Ubicación</span>
                 <input className="input" value={form.ubicacion} onChange={(e) => setForm({ ...form, ubicacion: e.target.value })} />

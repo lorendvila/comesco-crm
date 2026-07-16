@@ -40,13 +40,25 @@ function toCab(p: PedidoConLineas): CabeceraState {
   }
 }
 
-function toLineas(p: PedidoConLineas): LineaState[] {
-  return p.pedido_lineas.map((l) => ({
-    referencia_id: l.referencia_id,
-    cantidad: String(l.cantidad),
-    unidad: l.unidad,
-    precio: l.precio_unitario_cop == null ? '' : String(l.precio_unitario_cop),
-  }))
+function toLineas(p: PedidoConLineas, referencias: ReferenciaResumen[]): LineaState[] {
+  return p.pedido_lineas.map((l) => {
+    const iva = referencias.find((r) => r.id === l.referencia_id)?.iva_pct ?? 0
+    // Precio base neto: el guardado; si no hay (pedidos antiguos), se deriva del
+    // precio final con IVA con descuento 0, para que el importe no cambie al editar.
+    const base =
+      l.precio_base_cop != null
+        ? l.precio_base_cop
+        : l.precio_unitario_cop != null
+          ? Math.round((l.precio_unitario_cop / (1 + iva / 100)) * 100) / 100
+          : null
+    return {
+      referencia_id: l.referencia_id,
+      cantidad: String(l.cantidad),
+      unidad: l.unidad,
+      precioBase: base == null ? '' : String(base),
+      descuento: l.descuento_pct == null ? '0' : String(l.descuento_pct),
+    }
+  })
 }
 
 const hoyISO = () => new Date().toISOString().slice(0, 10)
@@ -223,7 +235,7 @@ export function PedidosPage() {
               referencias={referencias}
               stock={stock}
               initialCab={modal.mode === 'new' ? cabeceraVacia() : toCab(modal.pedido)}
-              initialLineas={modal.mode === 'new' ? [] : toLineas(modal.pedido)}
+              initialLineas={modal.mode === 'new' ? [] : toLineas(modal.pedido, referencias)}
               submitLabel={modal.mode === 'new' ? 'Crear pedido' : 'Guardar cambios'}
               onCancel={() => setModal(null)}
               onSubmit={async ({ cabecera, lineas }) => {

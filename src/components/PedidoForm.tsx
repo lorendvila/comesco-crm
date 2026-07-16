@@ -3,6 +3,7 @@ import type { FormEvent } from 'react'
 import { CANALES_ORIGEN, ESTADOS_PEDIDO, formatCOP } from '../data/constants'
 import type { ClienteResumen } from '../data/clientes'
 import type { ReferenciaResumen } from '../data/referencias'
+import { precioBaseCanal } from '../data/referencias'
 import { getCondiciones } from '../data/condiciones'
 import type { LineaInput } from '../data/pedidos'
 import type { TablesInsert } from '../types/database'
@@ -26,7 +27,8 @@ export interface LineaState {
   referencia_id: string
   cantidad: string
   unidad: string
-  precio: string
+  precioBase: string // precio base NETO (sin IVA), tarifa del canal
+  descuento: string // % de descuento de la línea
 }
 
 export function cabeceraVacia(): CabeceraState {
@@ -47,11 +49,26 @@ export function cabeceraVacia(): CabeceraState {
   }
 }
 
-export const LINEA_VACIA: LineaState = { referencia_id: '', cantidad: '', unidad: 'cajas', precio: '' }
+export const LINEA_VACIA: LineaState = { referencia_id: '', cantidad: '', unidad: 'cajas', precioBase: '', descuento: '' }
 
 const num = (s: string) => {
   const n = Number(s)
   return Number.isFinite(n) ? n : 0
+}
+
+// Cálculo de una línea a partir del precio base neto + descuento + IVA de la ref.
+export function calcLinea(l: LineaState, ref: ReferenciaResumen | undefined) {
+  const iva = ref?.iva_pct ?? 0
+  const cant = num(l.cantidad)
+  const netoUd = num(l.precioBase) * (1 - num(l.descuento) / 100) // neto unitario tras descuento
+  const conIvaUd = netoUd * (1 + iva / 100) // final unitario con IVA
+  return {
+    netoUd,
+    conIvaUd,
+    netoSub: netoUd * cant,
+    ivaSub: netoUd * cant * (iva / 100),
+    totalSub: conIvaUd * cant,
+  }
 }
 
 interface Props {
@@ -70,35 +87,49 @@ export function PedidoForm({ clientes, referencias, stock, initialCab, initialLi
   const [cab, setCab] = useState<CabeceraState>(initialCab)
   const [lineas, setLineas] = useState<LineaState[]>(initialLineas.length ? initialLineas : [{ ...LINEA_VACIA }])
   const [plazo, setPlazo] = useState<number | null>(null)
+  const [descuentoCliente, setDescuentoCliente] = useState<number | null>(null)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const setC = (patch: Partial<CabeceraState>) => setCab((p) => ({ ...p, ...patch }))
 
-  // Cliente elegido, para mostrar su dirección de entrega en el pedido.
+  // Cliente elegido: su canal fija la tarifa base y su dirección de entrega.
   const clienteSel = clientes.find((c) => c.id === cab.cliente_id)
+  const refById = (id: string) => referencias.find((r) => r.id === id)
 
-  // Plazo de pago del cliente (para la fecha de pago prevista)
+  // Condiciones del cliente: plazo de pago y % descuento por defecto.
   useEffect(() => {
     if (!cab.cliente_id) {
       setPlazo(null)
+      setDescuentoCliente(null)
       return
     }
-    getCondiciones(cab.cliente_id).then((c) => setPlazo(c?.plazo_pago_dias ?? null)).catch(() => setPlazo(null))
+    getCondiciones(cab.cliente_id)
+      .then((c) => {
+        setPlazo(c?.plazo_pago_dias ?? null)
+        setDescuentoCliente(c?.pac_descuento_pct ?? null)
+      })
+      .catch(() => {
+        setPlazo(null)
+        setDescuentoCliente(null)
+      })
   }, [cab.cliente_id])
 
-  const total = useMemo(() => lineas.reduce((s, l) => s + num(l.cantidad) * num(l.precio), 0), [lineas])
-
-  // Desglose de IVA "hacia atrás": el precio de línea es con IVA (opción B).
+  // Cálculo por línea (neto → con IVA) y totales del pedido.
+  const lineTotals = useMemo(
+    () => lineas.map((l) => calcLinea(l, refById(l.referencia_id))),
+    [lineas, referencias],
+  )
+  const total = useMemo(() => lineTotals.reduce((s, t) => s + t.totalSub, 0), [lineTotals])
   const desglose = useMemo(() => {
     let iva = 0
-    for (const l of lineas) {
-      const ref = referencias.find((r) => r.id === l.referencia_id)
-      const sub = num(l.cantidad) * num(l.precio)
-      if (ref) iva += sub * (ref.iva_pct / (100 + ref.iva_pct))
+    let base = 0
+    for (const t of lineTotals) {
+      iva += t.ivaSub
+      base += t.netoSub
     }
-    return { iva, base: total - iva }
-  }, [lineas, referencias, total])
+    return { iva, base }
+  }, [lineTotals])
 
   // La factura debería cuadrar con el total del pedido (ambos con IVA).
   const facturaCuadra = useMemo(() => {
@@ -121,9 +152,24 @@ export function PedidoForm({ clientes, referencias, stock, initialCab, initialLi
   const setLinea = (i: number, patch: Partial<LineaState>) =>
     setLineas((ls) => ls.map((l, idx) => (idx === i ? { ...l, ...patch } : l)))
 
+  // Al elegir referencia: trae la tarifa base del canal del cliente y, si la
+  // línea aún no tiene descuento, aplica el del cliente por defecto.
   const onRef = (i: number, referencia_id: string) => {
     const ref = referencias.find((r) => r.id === referencia_id)
-    setLinea(i, { referencia_id, unidad: ref?.unidad ?? 'cajas' })
+    const base = ref ? precioBaseCanal(ref, clienteSel?.canal ?? null) : null
+    setLineas((ls) =>
+      ls.map((l, idx) =>
+        idx === i
+          ? {
+              ...l,
+              referencia_id,
+              unidad: ref?.unidad ?? l.unidad,
+              precioBase: base != null ? String(base) : l.precioBase,
+              descuento: l.descuento || (descuentoCliente != null ? String(descuentoCliente) : ''),
+            }
+          : l,
+      ),
+    )
   }
 
   const submit = async (e: FormEvent) => {
@@ -155,12 +201,17 @@ export function PedidoForm({ clientes, referencias, stock, initialCab, initialLi
           fecha_vencimiento: cab.fecha_vencimiento || null,
           fecha_pago: cab.fecha_pago || null,
         },
-        lineas: validas.map((l) => ({
-          referencia_id: l.referencia_id,
-          cantidad: num(l.cantidad),
-          unidad: l.unidad,
-          precio_unitario_cop: l.precio === '' ? null : num(l.precio),
-        })),
+        lineas: validas.map((l) => {
+          const c = calcLinea(l, refById(l.referencia_id))
+          return {
+            referencia_id: l.referencia_id,
+            cantidad: num(l.cantidad),
+            unidad: l.unidad,
+            precio_unitario_cop: Math.round(c.conIvaUd), // final unitario con IVA
+            precio_base_cop: l.precioBase === '' ? null : num(l.precioBase),
+            descuento_pct: l.descuento === '' ? null : num(l.descuento),
+          }
+        }),
       })
     } catch {
       setError('No se pudo guardar el pedido.')
@@ -223,9 +274,15 @@ export function PedidoForm({ clientes, referencias, stock, initialCab, initialLi
 
       <div className="stack stack-2">
         <span className="t-label">Líneas del pedido</span>
+        <div className="linea-row t-caption" style={{ color: 'var(--text-4)' }}>
+          <span>Referencia</span><span>Cant.</span><span>Precio base (neto)</span><span>Desc. %</span>
+          <span style={{ textAlign: 'right' }}>Subtotal c/IVA</span><span />
+        </div>
         {lineas.map((l, i) => {
           const disp = l.referencia_id ? stock[l.referencia_id] : undefined
           const pide = num(l.cantidad)
+          const c = calcLinea(l, refById(l.referencia_id))
+          const sinTarifa = !!l.referencia_id && l.precioBase === ''
           return (
             <div key={i} className="linea-wrap">
               <div className="linea-row">
@@ -236,16 +293,18 @@ export function PedidoForm({ clientes, referencias, stock, initialCab, initialLi
                   ))}
                 </select>
                 <input className="input" type="number" min="0" placeholder="Cant." value={l.cantidad} onChange={(e) => setLinea(i, { cantidad: e.target.value })} />
-                <input className="input" placeholder="Unidad" value={l.unidad} onChange={(e) => setLinea(i, { unidad: e.target.value })} />
-                <input className="input" type="number" min="0" placeholder="Precio ud." value={l.precio} onChange={(e) => setLinea(i, { precio: e.target.value })} />
-                <span className="linea-row__sub t-body-sm">{formatCOP(num(l.cantidad) * num(l.precio))}</span>
+                <input className="input" type="number" min="0" placeholder="Neto" value={l.precioBase} onChange={(e) => setLinea(i, { precioBase: e.target.value })} />
+                <input className="input" type="number" min="0" max="100" step="0.01" placeholder="0" value={l.descuento} onChange={(e) => setLinea(i, { descuento: e.target.value })} />
+                <span className="linea-row__sub t-body-sm">{formatCOP(c.totalSub)}</span>
                 <button className="btn btn-sm btn-outline" type="button" onClick={() => setLineas((ls) => ls.filter((_, idx) => idx !== i))} title="Quitar línea">✕</button>
               </div>
-              {disp !== undefined && (
-                <span className={'t-caption linea-stock' + (pide > disp ? ' stock-bajo' : '')}>
-                  Disponible: {disp}{pide > disp ? ` — pides ${pide}, más de lo disponible` : ''}
-                </span>
-              )}
+              <span className="t-caption linea-stock">
+                {l.precioBase !== '' && <>Neto ud: {formatCOP(c.netoUd)} · con IVA: {formatCOP(c.conIvaUd)}{disp !== undefined ? ' · ' : ''}</>}
+                {sinTarifa && <span className="stock-bajo">Sin tarifa para este canal — pon el precio a mano · </span>}
+                {disp !== undefined && (
+                  <span className={pide > disp ? 'stock-bajo' : undefined}>Disponible: {disp}{pide > disp ? ` (pides ${pide})` : ''}</span>
+                )}
+              </span>
             </div>
           )
         })}

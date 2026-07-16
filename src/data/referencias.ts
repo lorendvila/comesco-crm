@@ -8,14 +8,27 @@ export interface ReferenciaResumen {
   categoria: string | null
   unidad: string
   iva_pct: number
+  precio_food_service_cop: number | null
+  precio_retail_cop: number | null
+  precio_industria_cop: number | null
 }
 
 export async function listReferencias(): Promise<ReferenciaResumen[]> {
   const { data, error } = await supabase
     .from('referencias')
-    .select('id, codigo_interno, nombre_producto, formato, categoria, unidad, iva_pct')
+    .select('id, codigo_interno, nombre_producto, formato, categoria, unidad, iva_pct, precio_food_service_cop, precio_retail_cop, precio_industria_cop')
     .is('deleted_at', null)
     .order('nombre_producto')
   if (error) throw error
   return data ?? []
+}
+
+// Precio base (neto) de una referencia según el canal del cliente.
+export function precioBaseCanal(ref: ReferenciaResumen, canal: string | null): number | null {
+  switch (canal) {
+    case 'food_service': return ref.precio_food_service_cop
+    case 'retail': return ref.precio_retail_cop
+    case 'industria': return ref.precio_industria_cop
+    default: return null
+  }
 }

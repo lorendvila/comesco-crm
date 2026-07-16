@@ -313,6 +313,8 @@ export type Database = {
           id: string
           pedido_id: string
           precio_unitario_cop: number | null
+          precio_base_cop: number | null
+          descuento_pct: number | null
           referencia_id: string
           subtotal_cop: number | null
           unidad: string
@@ -323,6 +325,8 @@ export type Database = {
           id?: string
           pedido_id: string
           precio_unitario_cop?: number | null
+          precio_base_cop?: number | null
+          descuento_pct?: number | null
           referencia_id: string
           subtotal_cop?: number | null
           unidad?: string
@@ -333,6 +337,8 @@ export type Database = {
           id?: string
           pedido_id?: string
           precio_unitario_cop?: number | null
+          precio_base_cop?: number | null
+          descuento_pct?: number | null
           referencia_id?: string
           subtotal_cop?: number | null
           unidad?: string
@@ -346,6 +352,9 @@ export type Database = {
           codigo_facturacion_externo: string | null
           codigo_interno: string
           coste_almacen_cop: number | null
+          precio_food_service_cop: number | null
+          precio_retail_cop: number | null
+          precio_industria_cop: number | null
           created_at: string | null
           deleted_at: string | null
           formato: string
@@ -365,6 +374,9 @@ export type Database = {
           codigo_facturacion_externo?: string | null
           codigo_interno?: string
           coste_almacen_cop?: number | null
+          precio_food_service_cop?: number | null
+          precio_retail_cop?: number | null
+          precio_industria_cop?: number | null
           created_at?: string | null
           deleted_at?: string | null
           formato: string
@@ -384,6 +396,9 @@ export type Database = {
           codigo_facturacion_externo?: string | null
           codigo_interno?: string
           coste_almacen_cop?: number | null
+          precio_food_service_cop?: number | null
+          precio_retail_cop?: number | null
+          precio_industria_cop?: number | null
           created_at?: string | null
           deleted_at?: string | null
           formato?: string
