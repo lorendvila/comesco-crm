@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { FormEvent } from 'react'
-import { CANALES_ORIGEN, ESTADOS_PEDIDO, formatCOP } from '../data/constants'
+import { CANALES_ORIGEN, ESTADOS_PEDIDO, formatCOP, costeRealNeto } from '../data/constants'
 import { useAuth } from '../auth/AuthProvider'
 import type { ClienteResumen } from '../data/clientes'
 import type { ReferenciaResumen } from '../data/referencias'
@@ -58,14 +58,14 @@ const num = (s: string) => {
 }
 
 // Cálculo de una línea a partir del precio base neto + descuento + IVA de la ref.
-// El margen va neto contra neto: el coste del maestro viene CON IVA, así que se
-// le descuenta. Cada punto de descuento se come margen.
+// El margen va neto contra neto y contra el coste REAL (landed sin IVA + la
+// comisión del 5%). Cada punto de descuento se come margen.
 export function calcLinea(l: LineaState, ref: ReferenciaResumen | undefined) {
   const iva = ref?.iva_pct ?? 0
   const cant = num(l.cantidad)
   const netoUd = num(l.precioBase) * (1 - num(l.descuento) / 100) // neto unitario tras descuento
   const conIvaUd = netoUd * (1 + iva / 100) // final unitario con IVA
-  const costeNetoUd = ref?.coste_almacen_cop != null ? ref.coste_almacen_cop / (1 + iva / 100) : null
+  const costeNetoUd = costeRealNeto(ref?.coste_almacen_cop ?? null, iva)
   const margenUd = costeNetoUd == null ? null : netoUd - costeNetoUd
   return {
     netoUd,

@@ -67,6 +67,18 @@ export function colorFamilia(categoria: string | null): string {
   return (categoria && COLOR_FAMILIA[categoria]) || '#8FB0C4'
 }
 
+// Comisión estándar (%) que se suma al coste landed hasta almacén para obtener
+// el coste real con el que se calcula el margen. Es un coste fijo de la
+// compañía, igual para todos los clientes y canales.
+export const COMISION_PCT = 5
+
+// Coste real unitario NETO de una referencia: se le quita el IVA al coste del
+// maestro (que lo lleva incluido) y se le suma la comisión.
+export function costeRealNeto(costeAlmacenConIva: number | null, ivaPct: number): number | null {
+  if (costeAlmacenConIva == null) return null
+  return (costeAlmacenConIva / (1 + ivaPct / 100)) * (1 + COMISION_PCT / 100)
+}
+
 // Colores con significado (semánticos), para KPIs y estados.
 export const COLOR_GOLD = '#D4C4A8'
 export const COLOR_VERDE = '#A6B187' // cobrado / ok

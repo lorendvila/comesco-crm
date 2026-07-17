@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase'
+import { costeRealNeto } from './constants'
 import { listInventario } from './inventario'
 
 export interface FamiliaUnidades {
@@ -18,7 +19,7 @@ export interface ResumenProducto {
   porFamilia: FamiliaUnidades[]
   topReferencias: RefVenta[]
   totalRevenue: number // venta NETA (sin IVA) — base del margen
-  totalCogs: number // coste hasta almacén, NETO (el maestro lo da con IVA; se descuenta)
+  totalCogs: number // coste REAL neto (landed sin IVA + comisión del 5%)
 }
 
 interface LineaRaw {
@@ -53,11 +54,10 @@ export async function resumenProducto(): Promise<ResumenProducto> {
     const cat = r.categoria ?? 'Otros'
     const iva = r.iva_pct ?? 0
     const valor = l.subtotal_cop ?? 0 // importe facturado (con IVA), para las tablas de producto
-    // Margen real = venta y coste AMBOS sin IVA. Ojo: el coste del maestro viene
-    // con IVA incluido ("Coste Unitario hasta almacen (Iva incluido)"), así que
-    // hay que quitárselo también, no solo a la venta.
+    // Margen real = venta y coste AMBOS sin IVA, y contra el coste REAL: el del
+    // maestro viene con IVA incluido y además hay que sumarle la comisión del 5%.
     totalRevenue += valor / (1 + iva / 100)
-    totalCogs += (l.cantidad * (r.coste_almacen_cop ?? 0)) / (1 + iva / 100)
+    totalCogs += l.cantidad * (costeRealNeto(r.coste_almacen_cop, iva) ?? 0)
     familias.set(cat, (familias.get(cat) ?? 0) + l.cantidad)
     const key = `${r.nombre_producto} ${r.formato}`
     const prev = refs.get(key)
