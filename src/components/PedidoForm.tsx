@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { FormEvent } from 'react'
 import { CANALES_ORIGEN, ESTADOS_PEDIDO, formatCOP } from '../data/constants'
+import { useAuth } from '../auth/AuthProvider'
 import type { ClienteResumen } from '../data/clientes'
 import type { ReferenciaResumen } from '../data/referencias'
 import { precioBaseCanal } from '../data/referencias'
@@ -57,17 +58,24 @@ const num = (s: string) => {
 }
 
 // Cálculo de una línea a partir del precio base neto + descuento + IVA de la ref.
+// El margen va neto contra neto: el coste del maestro viene CON IVA, así que se
+// le descuenta. Cada punto de descuento se come margen.
 export function calcLinea(l: LineaState, ref: ReferenciaResumen | undefined) {
   const iva = ref?.iva_pct ?? 0
   const cant = num(l.cantidad)
   const netoUd = num(l.precioBase) * (1 - num(l.descuento) / 100) // neto unitario tras descuento
   const conIvaUd = netoUd * (1 + iva / 100) // final unitario con IVA
+  const costeNetoUd = ref?.coste_almacen_cop != null ? ref.coste_almacen_cop / (1 + iva / 100) : null
+  const margenUd = costeNetoUd == null ? null : netoUd - costeNetoUd
   return {
     netoUd,
     conIvaUd,
     netoSub: netoUd * cant,
     ivaSub: netoUd * cant * (iva / 100),
     totalSub: conIvaUd * cant,
+    costeNetoUd,
+    margenSub: margenUd == null ? null : margenUd * cant,
+    margenPct: margenUd == null || netoUd <= 0 ? null : margenUd / netoUd,
   }
 }
 
@@ -86,6 +94,8 @@ interface Props {
 export function PedidoForm({ clientes, referencias, stock, initialCab, initialLineas, submitLabel, onSubmit, onCancel, onDelete }: Props) {
   const [cab, setCab] = useState<CabeceraState>(initialCab)
   const [lineas, setLineas] = useState<LineaState[]>(initialLineas.length ? initialLineas : [{ ...LINEA_VACIA }])
+  const { profile } = useAuth()
+  const isAdmin = profile?.role === 'admin' // el margen solo lo ve el admin
   const [plazo, setPlazo] = useState<number | null>(null)
   const [descuentoCliente, setDescuentoCliente] = useState<number | null>(null)
   const [saving, setSaving] = useState(false)
@@ -129,6 +139,21 @@ export function PedidoForm({ clientes, referencias, stock, initialCab, initialLi
       base += t.netoSub
     }
     return { iva, base }
+  }, [lineTotals])
+
+  // Margen del pedido (solo admin): neto vendido − coste neto.
+  const margen = useMemo(() => {
+    let valor = 0
+    let base = 0
+    let hay = false
+    for (const t of lineTotals) {
+      if (t.margenSub != null) {
+        valor += t.margenSub
+        hay = true
+      }
+      base += t.netoSub
+    }
+    return hay ? { valor, pct: base > 0 ? valor / base : null } : null
   }, [lineTotals])
 
   // La factura debería cuadrar con el total del pedido (ambos con IVA).
@@ -299,7 +324,10 @@ export function PedidoForm({ clientes, referencias, stock, initialCab, initialLi
                 <button className="btn btn-sm btn-outline" type="button" onClick={() => setLineas((ls) => ls.filter((_, idx) => idx !== i))} title="Quitar línea">✕</button>
               </div>
               <span className="t-caption linea-stock">
-                {l.precioBase !== '' && <>Neto ud: {formatCOP(c.netoUd)} · con IVA: {formatCOP(c.conIvaUd)}{disp !== undefined ? ' · ' : ''}</>}
+                {l.precioBase !== '' && <>Neto ud: {formatCOP(c.netoUd)} · con IVA: {formatCOP(c.conIvaUd)} · </>}
+                {isAdmin && c.margenPct != null && (
+                  <span className={c.margenPct < 0 ? 'stock-bajo' : 'margen-ok'}>Margen: {Math.round(c.margenPct * 100)}% · </span>
+                )}
                 {sinTarifa && <span className="stock-bajo">Sin tarifa para este canal — pon el precio a mano · </span>}
                 {disp !== undefined && (
                   <span className={pide > disp ? 'stock-bajo' : undefined}>Disponible: {disp}{pide > disp ? ` (pides ${pide})` : ''}</span>
@@ -316,6 +344,11 @@ export function PedidoForm({ clientes, referencias, stock, initialCab, initialLi
         <div className="stack stack-1" style={{ alignItems: 'flex-end' }}>
           <span className="t-caption">Base imponible (est.): {formatCOP(desglose.base)}</span>
           <span className="t-caption">IVA (est.): {formatCOP(desglose.iva)}</span>
+          {isAdmin && margen && (
+            <span className={'t-caption margen-linea' + (margen.valor < 0 ? ' stock-bajo' : '')}>
+              🔒 Margen del pedido: {margen.pct == null ? '—' : `${Math.round(margen.pct * 100)}%`} ({formatCOP(margen.valor)}) · solo admin
+            </span>
+          )}
           <div className="cluster cluster-2">
             <span className="t-label">Total con IVA</span>
             <span className="t-heading">{formatCOP(total)}</span>

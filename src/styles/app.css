@@ -656,3 +656,13 @@ select.input {
 }
 .linea-stock { padding-left: var(--sp-1); }
 .stock-bajo { color: #E0A0A0; }
+
+/* Margen (solo admin): verde cuando es sano, rojizo si es negativo */
+.margen-ok { color: #A6B187; font-weight: var(--weight-medium); }
+.margen-linea {
+  color: #A6B187;
+  font-weight: var(--weight-medium);
+  border-top: 1px dashed var(--border-subtle);
+  padding-top: var(--sp-1);
+  margin-top: var(--sp-1);
+}
