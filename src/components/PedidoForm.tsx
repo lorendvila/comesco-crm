@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { FormEvent } from 'react'
-import { CANALES_ORIGEN, ESTADOS_PEDIDO, formatCOP, costeRealNeto } from '../data/constants'
+import { CANALES_ORIGEN, ESTADOS_PEDIDO, formatCOP, costeRealNeto, pacPorCanal } from '../data/constants'
 import { useAuth } from '../auth/AuthProvider'
 import type { ClienteResumen } from '../data/clientes'
 import type { ReferenciaResumen } from '../data/referencias'
@@ -114,16 +114,19 @@ export function PedidoForm({ clientes, referencias, stock, initialCab, initialLi
       setDescuentoCliente(null)
       return
     }
+    // PAC por defecto: el pactado en condiciones si existe; si no, el del canal
+    // del cliente (retail 10%, resto 0%).
+    const canal = clientes.find((c) => c.id === cab.cliente_id)?.canal ?? null
     getCondiciones(cab.cliente_id)
       .then((c) => {
         setPlazo(c?.plazo_pago_dias ?? null)
-        setDescuentoCliente(c?.pac_descuento_pct ?? null)
+        setDescuentoCliente(c?.pac_descuento_pct ?? pacPorCanal(canal))
       })
       .catch(() => {
         setPlazo(null)
-        setDescuentoCliente(null)
+        setDescuentoCliente(pacPorCanal(canal))
       })
-  }, [cab.cliente_id])
+  }, [cab.cliente_id, clientes])
 
   // Cálculo por línea (neto → con IVA) y totales del pedido.
   const lineTotals = useMemo(

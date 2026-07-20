@@ -72,11 +72,30 @@ export function colorFamilia(categoria: string | null): string {
 // compañía, igual para todos los clientes y canales.
 export const COMISION_PCT = 5
 
+// PAC (descuento de canal) por defecto de un pedido. El canal retail reserva un
+// 10% que ya va incluido en su tarifa (columna J del maestro); food service e
+// industria no llevan PAC. Un cliente con pac_descuento_pct pactado en sus
+// condiciones sobrescribe este valor.
+export function pacPorCanal(canal: string | null): number {
+  return canal === 'retail' ? 10 : 0
+}
+
 // Coste real unitario NETO de una referencia: se le quita el IVA al coste del
 // maestro (que lo lleva incluido) y se le suma la comisión.
+// La comisión es "estilo margen" (col I del maestro = coste / (1 − 5%)), no un
+// recargo del 5% sobre el coste, para que el margen del pedido reproduzca la
+// columna L del Excel maestro al decimal.
 export function costeRealNeto(costeAlmacenConIva: number | null, ivaPct: number): number | null {
   if (costeAlmacenConIva == null) return null
-  return (costeAlmacenConIva / (1 + ivaPct / 100)) * (1 + COMISION_PCT / 100)
+  return costeAlmacenConIva / (1 + ivaPct / 100) / (1 - COMISION_PCT / 100)
+}
+
+// Coste "de catálogo" de una referencia = columna I del maestro: coste hasta
+// almacén CON IVA más la comisión de venta. Es lo que mostramos como "coste"
+// en Inventario y en el valor de inventario del Dashboard.
+export function costeConComision(costeAlmacenConIva: number | null): number | null {
+  if (costeAlmacenConIva == null) return null
+  return costeAlmacenConIva / (1 - COMISION_PCT / 100)
 }
 
 // Colores con significado (semánticos), para KPIs y estados.

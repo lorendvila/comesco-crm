@@ -11,6 +11,7 @@ import {
   ETAPAS,
   formatCOPcorto,
   colorFamilia,
+  costeConComision,
   COLOR_GOLD,
   COLOR_VERDE,
   COLOR_AMBAR,
@@ -110,7 +111,7 @@ export function DashboardPage() {
           }, 0),
           margen,
           margenPct: prod.totalRevenue > 0 ? margen / prod.totalRevenue : 0,
-          valorInventario: inventario.reduce((s, f) => s + (f.inv ? f.inv.cantidad_disponible * (f.coste_almacen_cop ?? 0) : 0), 0),
+          valorInventario: inventario.reduce((s, f) => s + (f.inv ? f.inv.cantidad_disponible * (costeConComision(f.coste_almacen_cop) ?? 0) : 0), 0),
           pipelinePorEtapa: ETAPAS.map((et) => {
             const valor = ops.filter((o) => o.etapa === et.value).reduce((s, o) => s + (o.valor_estimado ?? 0), 0)
             return { name: et.label, val: valor, text: formatCOPcorto(valor), color: ETAPA_COLOR[et.value] }

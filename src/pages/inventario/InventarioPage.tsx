@@ -3,7 +3,7 @@ import type { FormEvent } from 'react'
 import { useAuth } from '../../auth/AuthProvider'
 import { listInventario, upsertInventario, updateCosteReferencia, updateTarifasReferencia } from '../../data/inventario'
 import type { InventarioFila } from '../../data/inventario'
-import { formatCOP, formatFechaHora, colorFamilia } from '../../data/constants'
+import { formatCOP, formatFechaHora, colorFamilia, costeConComision } from '../../data/constants'
 
 interface FormState {
   cantidad_disponible: string
@@ -43,7 +43,7 @@ export function InventarioPage() {
   useEffect(cargar, [])
 
   const valorTotal = useMemo(
-    () => filas.reduce((s, f) => s + (f.inv ? f.inv.cantidad_disponible * (f.coste_almacen_cop ?? 0) : 0), 0),
+    () => filas.reduce((s, f) => s + (f.inv ? f.inv.cantidad_disponible * (costeConComision(f.coste_almacen_cop) ?? 0) : 0), 0),
     [filas],
   )
 
@@ -133,8 +133,8 @@ export function InventarioPage() {
                   </td>
                   <td>{f.formato}</td>
                   <td>{f.inv ? f.inv.cantidad_disponible : 0}</td>
-                  <td>{formatCOP(f.coste_almacen_cop)}</td>
-                  <td>{formatCOP((f.inv?.cantidad_disponible ?? 0) * (f.coste_almacen_cop ?? 0))}</td>
+                  <td>{formatCOP(costeConComision(f.coste_almacen_cop))}</td>
+                  <td>{formatCOP((f.inv?.cantidad_disponible ?? 0) * (costeConComision(f.coste_almacen_cop) ?? 0))}</td>
                   <td>{f.inv?.ubicacion ?? '—'}</td>
                   <td>{f.inv?.contenedor ?? '—'}</td>
                   <td>{f.inv?.actualizado_at ? formatFechaHora(f.inv.actualizado_at) : '—'}</td>

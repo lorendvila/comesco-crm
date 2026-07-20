@@ -25,11 +25,14 @@ export async function listReferencias(): Promise<ReferenciaResumen[]> {
 }
 
 // Precio base (neto) de una referencia según el canal del cliente.
+// Tarifa base NETA (columna J del maestro) para el canal del cliente. Si el
+// cliente no tiene canal definido —o ese canal no tiene precio cargado— se cae
+// a la tarifa RETAIL por defecto, para que el pedido siempre sugiera un precio.
 export function precioBaseCanal(ref: ReferenciaResumen, canal: string | null): number | null {
   switch (canal) {
-    case 'food_service': return ref.precio_food_service_cop
+    case 'food_service': return ref.precio_food_service_cop ?? ref.precio_retail_cop
+    case 'industria': return ref.precio_industria_cop ?? ref.precio_retail_cop
     case 'retail': return ref.precio_retail_cop
-    case 'industria': return ref.precio_industria_cop
-    default: return null
+    default: return ref.precio_retail_cop // sin canal → retail por defecto
   }
 }

@@ -2,16 +2,14 @@ import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 import { getCondiciones, saveCondiciones } from '../../data/condiciones'
 import type { Condiciones } from '../../data/condiciones'
-import { formatCOP } from '../../data/constants'
 
 interface FormState {
   plazo_pago_dias: string
   comision_pct: string
   pac_descuento_pct: string
-  precio_especial: string
 }
 
-const VACIO: FormState = { plazo_pago_dias: '', comision_pct: '', pac_descuento_pct: '', precio_especial: '' }
+const VACIO: FormState = { plazo_pago_dias: '', comision_pct: '', pac_descuento_pct: '' }
 
 function toForm(c: Condiciones): FormState {
   const s = (n: number | null) => (n == null ? '' : String(n))
@@ -19,7 +17,6 @@ function toForm(c: Condiciones): FormState {
     plazo_pago_dias: s(c.plazo_pago_dias),
     comision_pct: s(c.comision_pct),
     pac_descuento_pct: s(c.pac_descuento_pct),
-    precio_especial: s(c.precio_especial),
   }
 }
 
@@ -72,7 +69,6 @@ export function CondicionesTab({ clienteId }: { clienteId: string }) {
         plazo_pago_dias: numOrNull(form.plazo_pago_dias),
         comision_pct: numOrNull(form.comision_pct),
         pac_descuento_pct: numOrNull(form.pac_descuento_pct),
-        precio_especial: numOrNull(form.precio_especial),
       })
       setEditando(false)
       cargar()
@@ -98,10 +94,6 @@ export function CondicionesTab({ clienteId }: { clienteId: string }) {
           <span className="field__label">PAC descuento (%)</span>
           <input className="input" type="number" step="0.01" value={form.pac_descuento_pct} onChange={(e) => setForm({ ...form, pac_descuento_pct: e.target.value })} />
         </label>
-        <label className="field">
-          <span className="field__label">Precio especial (COP)</span>
-          <input className="input" type="number" min="0" value={form.precio_especial} onChange={(e) => setForm({ ...form, precio_especial: e.target.value })} />
-        </label>
         {error && <p className="login-error field--full">{error}</p>}
         <div className="cluster cluster-3 field--full">
           <button className="btn btn-primary" type="submit">Guardar</button>
@@ -121,7 +113,6 @@ export function CondicionesTab({ clienteId }: { clienteId: string }) {
           <Dato label="Plazo de pago" value={dias(cond.plazo_pago_dias)} />
           <Dato label="Comisión" value={pct(cond.comision_pct)} />
           <Dato label="PAC descuento" value={pct(cond.pac_descuento_pct)} />
-          <Dato label="Precio especial" value={formatCOP(cond.precio_especial)} />
         </div>
       )}
       <div>

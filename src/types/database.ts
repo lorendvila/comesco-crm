@@ -143,7 +143,6 @@ export type Database = {
           id: string
           pac_descuento_pct: number | null
           plazo_pago_dias: number | null
-          precio_especial: number | null
           updated_at: string | null
         }
         Insert: {
@@ -153,7 +152,6 @@ export type Database = {
           id?: string
           pac_descuento_pct?: number | null
           plazo_pago_dias?: number | null
-          precio_especial?: number | null
           updated_at?: string | null
         }
         Update: {
@@ -163,7 +161,6 @@ export type Database = {
           id?: string
           pac_descuento_pct?: number | null
           plazo_pago_dias?: number | null
-          precio_especial?: number | null
           updated_at?: string | null
         }
         Relationships: []
