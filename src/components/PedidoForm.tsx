@@ -100,6 +100,8 @@ export function PedidoForm({ clientes, referencias, stock, initialCab, initialLi
   const [descuentoCliente, setDescuentoCliente] = useState<number | null>(null)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  // El valor de la factura se calcula solo (total con IVA) mientras no se edite a mano.
+  const [valorFacturaTocado, setValorFacturaTocado] = useState(initialCab.valor_factura !== '')
 
   const setC = (patch: Partial<CabeceraState>) => setCab((p) => ({ ...p, ...patch }))
 
@@ -134,6 +136,13 @@ export function PedidoForm({ clientes, referencias, stock, initialCab, initialLi
     [lineas, referencias],
   )
   const total = useMemo(() => lineTotals.reduce((s, t) => s + t.totalSub, 0), [lineTotals])
+
+  // Autocompleta el valor de la factura con el total del pedido (CON IVA) mientras
+  // no se haya editado a mano; así se factura por el total calculado sin teclearlo.
+  useEffect(() => {
+    if (valorFacturaTocado) return
+    setCab((p) => ({ ...p, valor_factura: total > 0 ? String(Math.round(total)) : '' }))
+  }, [total, valorFacturaTocado])
   const desglose = useMemo(() => {
     let iva = 0
     let base = 0
@@ -371,18 +380,24 @@ export function PedidoForm({ clientes, referencias, stock, initialCab, initialLi
             <span className="t-body">{saldo == null ? '—' : formatCOP(saldo)}</span>
           </div>
           <label className="field">
-            <span className="field__label">Valor factura (COP)</span>
-            <input className="input" type="number" min="0" value={cab.valor_factura} onChange={(e) => setC({ valor_factura: e.target.value })} />
-            {cab.valor_factura === ''
+            <span className="field__label">Valor factura (con IVA)</span>
+            <input className="input" type="number" min="0" value={cab.valor_factura}
+              onChange={(e) => { setValorFacturaTocado(true); setC({ valor_factura: e.target.value }) }} />
+            {!valorFacturaTocado
               ? total > 0 && (
-                  <button type="button" className="btn btn-sm btn-outline" style={{ marginTop: 'var(--sp-1)' }} onClick={() => setC({ valor_factura: String(Math.round(total)) })}>
-                    Usar total del pedido ({formatCOP(total)})
-                  </button>
+                  <span className="t-caption" style={{ color: 'var(--text-4)', marginTop: 'var(--sp-1)' }}>
+                    Calculado del total del pedido · editable
+                  </span>
                 )
               : !facturaCuadra && (
-                  <span className="login-error" style={{ fontSize: 'var(--text-sm)', marginTop: 'var(--sp-1)' }}>
-                    ⚠ No coincide con el total del pedido ({formatCOP(total)})
-                  </span>
+                  <div style={{ marginTop: 'var(--sp-1)' }}>
+                    <span className="login-error" style={{ fontSize: 'var(--text-sm)' }}>
+                      ⚠ No coincide con el total ({formatCOP(total)})
+                    </span>
+                    <button type="button" className="btn btn-sm btn-outline" style={{ marginTop: 'var(--sp-1)', display: 'block' }} onClick={() => setValorFacturaTocado(false)}>
+                      Igualar al total
+                    </button>
+                  </div>
                 )}
           </label>
           <label className="field">
