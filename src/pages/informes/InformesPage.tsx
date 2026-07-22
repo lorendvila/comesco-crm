@@ -181,7 +181,8 @@ export function InformesPage() {
                     <span className="legend__item"><span className="legend__dot" style={{ background: COLOR_GOLD }} />Facturado</span>
                     <span className="legend__item"><span className="legend__dot" style={{ background: COLOR_VERDE }} />Cobrado</span>
                   </div>
-                  <table className="data-table" style={{ marginTop: 'var(--sp-3)' }}>
+                  <div className="table-wrap" style={{ marginTop: 'var(--sp-3)' }}>
+                  <table className="data-table">
                     <thead>
                       <tr>
                         <th>Mes</th>
@@ -203,6 +204,7 @@ export function InformesPage() {
                       ))}
                     </tbody>
                   </table>
+                  </div>
                 </>
               )}
             </div>
@@ -263,6 +265,7 @@ export function InformesPage() {
               {demandaOrdenada.length === 0 ? (
                 <p className="t-body-sm">Sin demanda registrada todavía.</p>
               ) : (
+                <div className="table-wrap">
                 <table className="data-table">
                   <thead>
                     <tr>
@@ -290,6 +293,7 @@ export function InformesPage() {
                     })}
                   </tbody>
                 </table>
+                </div>
               )}
             </div>
           </section>

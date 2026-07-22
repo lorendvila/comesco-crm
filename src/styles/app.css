@@ -745,3 +745,19 @@ select.input {
   .linea-row__sub { text-align: left; }
   .linea-row .btn { justify-self: end; }
 }
+
+/* En móvil las tablas no se aplastan: mantienen su ancho natural y se deslizan
+   DENTRO de su recuadro (.table-wrap), con la primera columna fija para no
+   perder la referencia (mes / producto) al desplazar. */
+@media (max-width: 860px) {
+  .table-wrap .data-table { min-width: max-content; }
+  .table-wrap .data-table th,
+  .table-wrap .data-table td { white-space: nowrap; }
+  .table-wrap .data-table th:first-child,
+  .table-wrap .data-table td:first-child {
+    position: sticky;
+    left: 0;
+    z-index: 1;
+    background: var(--bg-panel);
+  }
+}
