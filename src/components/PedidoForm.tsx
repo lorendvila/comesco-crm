@@ -323,15 +323,27 @@ export function PedidoForm({ clientes, referencias, stock, initialCab, initialLi
           return (
             <div key={i} className="linea-wrap">
               <div className="linea-row">
-                <select className="input" value={l.referencia_id} onChange={(e) => onRef(i, e.target.value)}>
-                  <option value="">Referencia…</option>
-                  {referencias.map((r) => (
-                    <option key={r.id} value={r.id}>{r.nombre_producto} · {r.formato}</option>
-                  ))}
-                </select>
-                <input className="input" type="number" min="0" placeholder="Cant." value={l.cantidad} onChange={(e) => setLinea(i, { cantidad: e.target.value })} />
-                <input className="input" type="number" min="0" placeholder="Neto" value={l.precioBase} onChange={(e) => setLinea(i, { precioBase: e.target.value })} />
-                <input className="input" type="number" min="0" max="100" step="0.01" placeholder="0" value={l.descuento} onChange={(e) => setLinea(i, { descuento: e.target.value })} />
+                <label className="linea-cell">
+                  <span className="linea-cell__lbl">Referencia</span>
+                  <select className="input" value={l.referencia_id} onChange={(e) => onRef(i, e.target.value)}>
+                    <option value="">Referencia…</option>
+                    {referencias.map((r) => (
+                      <option key={r.id} value={r.id}>{r.nombre_producto} · {r.formato}</option>
+                    ))}
+                  </select>
+                </label>
+                <label className="linea-cell">
+                  <span className="linea-cell__lbl">Cantidad</span>
+                  <input className="input" type="number" min="0" placeholder="Cant." value={l.cantidad} onChange={(e) => setLinea(i, { cantidad: e.target.value })} />
+                </label>
+                <label className="linea-cell">
+                  <span className="linea-cell__lbl">Precio base (neto)</span>
+                  <input className="input" type="number" min="0" placeholder="Neto" value={l.precioBase} onChange={(e) => setLinea(i, { precioBase: e.target.value })} />
+                </label>
+                <label className="linea-cell">
+                  <span className="linea-cell__lbl">% de descuento</span>
+                  <input className="input" type="number" min="0" max="100" step="0.01" placeholder="% dto" value={l.descuento} onChange={(e) => setLinea(i, { descuento: e.target.value })} />
+                </label>
                 <span className="linea-row__sub t-body-sm">{formatCOP(c.totalSub)}</span>
                 <button className="btn btn-sm btn-outline" type="button" onClick={() => setLineas((ls) => ls.filter((_, idx) => idx !== i))} title="Quitar línea">✕</button>
               </div>
