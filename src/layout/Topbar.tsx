@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useAuth } from '../auth/AuthProvider'
 import { cambiarMiPassword } from '../data/usuarios'
 
-export function Topbar() {
+export function Topbar({ onMenu }: { onMenu?: () => void }) {
   const { session, profile, signOut } = useAuth()
   const name = profile?.full_name ?? session?.user.email ?? ''
   const role = profile?.role
@@ -10,6 +10,7 @@ export function Topbar() {
 
   return (
     <header className="topbar">
+      <button className="topbar__menu" onClick={onMenu} aria-label="Abrir menú">☰</button>
       <div className="topbar__spacer" />
       <div className="cluster cluster-3">
         <div className="topbar__user">

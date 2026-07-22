@@ -666,3 +666,82 @@ select.input {
   padding-top: var(--sp-1);
   margin-top: var(--sp-1);
 }
+
+/* ============================================================
+   RESPONSIVE / MÓVIL
+   La barra lateral pasa a ser un cajón deslizante; rejillas,
+   formularios y líneas de pedido se apilan en pantallas estrechas.
+   ============================================================ */
+.topbar__menu { display: none; }        /* hamburguesa: oculta en escritorio */
+.sidebar-overlay { display: none; }
+
+@media (max-width: 860px) {
+  /* --- Barra lateral como cajón deslizante --- */
+  .sidebar {
+    position: fixed;
+    top: 0; left: 0; bottom: 0;
+    width: min(80vw, 280px);
+    transform: translateX(-100%);
+    transition: transform var(--ease-base);
+    z-index: 60;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
+  }
+  .sidebar--open { transform: translateX(0); }
+  .sidebar-overlay {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background: rgba(10, 15, 22, 0.55);
+    z-index: 55;
+  }
+
+  /* --- Topbar con hamburguesa --- */
+  .topbar {
+    height: auto;
+    min-height: 60px;
+    padding: var(--sp-2) var(--sp-4);
+    gap: var(--sp-2);
+  }
+  .topbar__menu {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px; height: 40px;
+    flex-shrink: 0;
+    background: transparent;
+    border: var(--border-width) solid var(--border);
+    border-radius: var(--r-md);
+    color: var(--text-2);
+    font-size: 1.15rem;
+    line-height: 1;
+    cursor: pointer;
+  }
+  .topbar__name { display: none; }
+
+  /* --- Contenido y rejillas --- */
+  .app-content { padding: var(--sp-4); }
+  .form-grid,
+  .grid-2,
+  .grid-3 { grid-template-columns: 1fr; }
+  .grid-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+
+  /* --- Modales casi a pantalla completa --- */
+  .modal-overlay { padding: var(--sp-3); }
+  .modal { padding: var(--sp-5); }
+
+  /* --- Pestañas de la ficha: scroll horizontal si no caben --- */
+  .tabs { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+}
+
+@media (max-width: 640px) {
+  .grid-4 { grid-template-columns: 1fr; }
+
+  /* --- Líneas de pedido apiladas --- */
+  .linea-row {
+    grid-template-columns: 1fr;
+    gap: var(--sp-2);
+  }
+  .linea-row.t-caption { display: none; }   /* cabecera de columnas: fuera */
+  .linea-row__sub { text-align: left; }
+  .linea-row .btn { justify-self: end; }
+}

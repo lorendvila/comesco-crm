@@ -33,12 +33,12 @@ const NAV: NavEntry[] = [
 const itemClass = ({ isActive }: { isActive: boolean }) =>
   'nav-item' + (isActive ? ' nav-item--active' : '')
 
-export function Sidebar() {
+export function Sidebar({ open = false, onNavigate }: { open?: boolean; onNavigate?: () => void }) {
   const { profile } = useAuth()
   const isAdmin = profile?.role === 'admin'
   const nav = NAV.filter((e) => e.type !== 'link' || !e.adminOnly || isAdmin)
   return (
-    <aside className="sidebar">
+    <aside className={'sidebar' + (open ? ' sidebar--open' : '')}>
       <div className="sidebar__brand">
         <div className="ld-firma"></div>
         <span className="sidebar__brand-name">COMESCO</span>
@@ -46,7 +46,7 @@ export function Sidebar() {
       <nav className="sidebar__nav">
         {nav.map((entry) =>
           entry.type === 'link' ? (
-            <NavLink key={entry.to} to={entry.to} end={entry.end} className={itemClass}>
+            <NavLink key={entry.to} to={entry.to} end={entry.end} className={itemClass} onClick={onNavigate}>
               {entry.label}
             </NavLink>
           ) : (
@@ -54,7 +54,7 @@ export function Sidebar() {
               <span className="nav-group__label">{entry.label}</span>
               <div className="nav-group__items">
                 {entry.items.map((it) => (
-                  <NavLink key={it.to} to={it.to} className={itemClass}>
+                  <NavLink key={it.to} to={it.to} className={itemClass} onClick={onNavigate}>
                     {it.label}
                   </NavLink>
                 ))}
