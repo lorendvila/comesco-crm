@@ -120,6 +120,7 @@ const COLOR_ESTADO_PEDIDO: Record<string, string> = {
   facturado: COLOR_GOLD,
   cobrado: COLOR_VERDE,
   cancelado: COLOR_GRIS,
+  anulado: COLOR_GRIS,
 }
 export function colorEstadoPedido(v: string): string {
   return COLOR_ESTADO_PEDIDO[v] ?? COLOR_GOLD
@@ -152,6 +153,7 @@ export const ESTADOS_PEDIDO = [
   { value: 'facturado', label: 'Facturado' },
   { value: 'cobrado', label: 'Cobrado' },
   { value: 'cancelado', label: 'Cancelado' },
+  { value: 'anulado', label: 'Anulada por NC' },
 ] as const
 
 const dtFmt = new Intl.DateTimeFormat('es-CO', { dateStyle: 'medium', timeStyle: 'short' })

@@ -102,16 +102,21 @@ export function DashboardPage() {
     Promise.all([listClientes(), listOportunidades(), listPedidosExport({}), listInventario(), resumenProducto()])
       .then(([clientes, ops, pedidos, inventario, prod]) => {
         const margen = prod.totalRevenue - prod.totalCogs
+        // Las facturas canceladas o anuladas por NC no cuentan en la cobranza.
+        const activos = pedidos.filter((p) => p.estado !== 'cancelado' && p.estado !== 'anulado')
+        // Stock total por referencia = suma de todos los almacenes.
+        const totalPorRef = new Map<string, number>()
+        for (const f of inventario) totalPorRef.set(f.referencia_id, (totalPorRef.get(f.referencia_id) ?? 0) + f.cantidad_disponible)
         setM({
-          facturado: pedidos.reduce((s, p) => s + (p.valor_factura ?? 0), 0),
-          pendiente: pedidos.reduce((s, p) => s + Math.max(0, (p.valor_factura ?? 0) - (p.pagado ?? 0)), 0),
-          vencido: pedidos.reduce((s, p) => {
+          facturado: activos.reduce((s, p) => s + (p.valor_factura ?? 0), 0),
+          pendiente: activos.reduce((s, p) => s + Math.max(0, (p.valor_factura ?? 0) - (p.pagado ?? 0)), 0),
+          vencido: activos.reduce((s, p) => {
             const saldo = (p.valor_factura ?? 0) - (p.pagado ?? 0)
             return s + (p.fecha_vencimiento && p.fecha_vencimiento < hoy && saldo > 0 ? saldo : 0)
           }, 0),
           margen,
           margenPct: prod.totalRevenue > 0 ? margen / prod.totalRevenue : 0,
-          valorInventario: inventario.reduce((s, f) => s + (f.inv ? f.inv.cantidad_disponible * (costeConComision(f.coste_almacen_cop) ?? 0) : 0), 0),
+          valorInventario: inventario.reduce((s, f) => s + f.cantidad_disponible * (costeConComision(f.coste_almacen_cop) ?? 0), 0),
           pipelinePorEtapa: ETAPAS.map((et) => {
             const valor = ops.filter((o) => o.etapa === et.value).reduce((s, o) => s + (o.valor_estimado ?? 0), 0)
             return { name: et.label, val: valor, text: formatCOPcorto(valor), color: ETAPA_COLOR[et.value] }
@@ -122,7 +127,7 @@ export function DashboardPage() {
           }),
           porFamilia: prod.porFamilia.map((f) => ({ name: f.categoria, val: f.unidades, text: String(f.unidades), color: colorFamilia(f.categoria) })),
           topReferencias: prod.topReferencias,
-          sinStock: inventario.filter((f) => !f.inv || f.inv.cantidad_disponible <= 0).length,
+          sinStock: [...totalPorRef.values()].filter((t) => t <= 0).length,
         })
       })
       .catch(() => setError('No se pudo cargar el panel.'))

@@ -5,12 +5,15 @@ import { useAuth } from '../auth/AuthProvider'
 import type { ClienteResumen } from '../data/clientes'
 import type { ReferenciaResumen } from '../data/referencias'
 import { precioBaseCanal } from '../data/referencias'
+import type { Almacen } from '../data/almacenes'
+import type { StockMap } from '../data/inventario'
 import { getCondiciones } from '../data/condiciones'
 import type { LineaInput } from '../data/pedidos'
 import type { TablesInsert } from '../types/database'
 
 export interface CabeceraState {
   cliente_id: string
+  almacen_id: string
   fecha_pedido: string
   fecha_entrega: string
   fecha_factura: string
@@ -22,6 +25,8 @@ export interface CabeceraState {
   pagado: string
   fecha_vencimiento: string
   fecha_pago: string
+  nota_credito_numero: string
+  nota_credito_fecha: string
 }
 
 export interface LineaState {
@@ -36,6 +41,7 @@ export function cabeceraVacia(): CabeceraState {
   const hoy = new Date().toISOString().slice(0, 10)
   return {
     cliente_id: '',
+    almacen_id: '',
     fecha_pedido: hoy,
     fecha_entrega: '',
     fecha_factura: '',
@@ -47,6 +53,8 @@ export function cabeceraVacia(): CabeceraState {
     pagado: '',
     fecha_vencimiento: '',
     fecha_pago: '',
+    nota_credito_numero: '',
+    nota_credito_fecha: '',
   }
 }
 
@@ -87,7 +95,9 @@ export function calcLinea(l: LineaState, ref: ReferenciaResumen | undefined) {
 interface Props {
   clientes: ClienteResumen[]
   referencias: ReferenciaResumen[]
-  stock: Record<string, number>
+  almacenes: Almacen[]
+  stock: StockMap // { referencia_id: { almacen_id: unidades } }
+  esNuevo: boolean // solo los pedidos nuevos auto-asignan almacén por defecto
   initialCab: CabeceraState
   initialLineas: LineaState[]
   submitLabel: string
@@ -96,7 +106,7 @@ interface Props {
   onDelete?: () => Promise<void>
 }
 
-export function PedidoForm({ clientes, referencias, stock, initialCab, initialLineas, submitLabel, onSubmit, onCancel, onDelete }: Props) {
+export function PedidoForm({ clientes, referencias, almacenes, stock, esNuevo, initialCab, initialLineas, submitLabel, onSubmit, onCancel, onDelete }: Props) {
   const [cab, setCab] = useState<CabeceraState>(initialCab)
   const [lineas, setLineas] = useState<LineaState[]>(initialLineas.length ? initialLineas : [{ ...LINEA_VACIA }])
   const { profile } = useAuth()
@@ -107,6 +117,8 @@ export function PedidoForm({ clientes, referencias, stock, initialCab, initialLi
   const [error, setError] = useState<string | null>(null)
   // El valor de la factura se calcula solo (total con IVA) mientras no se edite a mano.
   const [valorFacturaTocado, setValorFacturaTocado] = useState(initialCab.valor_factura !== '')
+  // Si el usuario elige almacén a mano, dejamos de auto-asignarlo por la ciudad del cliente.
+  const [almacenTocado, setAlmacenTocado] = useState(initialCab.almacen_id !== '')
 
   const setC = (patch: Partial<CabeceraState>) => setCab((p) => ({ ...p, ...patch }))
 
@@ -134,6 +146,15 @@ export function PedidoForm({ clientes, referencias, stock, initialCab, initialLi
         setDescuentoCliente(pacPorCanal(canal))
       })
   }, [cab.cliente_id, clientes])
+
+  // Almacén por defecto: el de la ciudad del cliente si coincide; si no, el primero.
+  // No se pisa si el usuario ya lo eligió a mano (o si el pedido ya lo traía).
+  useEffect(() => {
+    if (!esNuevo || almacenTocado || almacenes.length === 0) return
+    const ciudad = clientes.find((c) => c.id === cab.cliente_id)?.ciudad ?? null
+    const match = ciudad ? almacenes.find((a) => a.ciudad.toLowerCase() === ciudad.toLowerCase()) : undefined
+    setCab((p) => ({ ...p, almacen_id: (match ?? almacenes[0]).id }))
+  }, [cab.cliente_id, almacenes, clientes, almacenTocado, esNuevo])
 
   // Cálculo por línea (neto → con IVA) y totales del pedido.
   const lineTotals = useMemo(
@@ -231,6 +252,7 @@ export function PedidoForm({ clientes, referencias, stock, initialCab, initialLi
       await onSubmit({
         cabecera: {
           cliente_id: cab.cliente_id,
+          almacen_id: cab.almacen_id || null,
           fecha_pedido: cab.fecha_pedido,
           fecha_entrega: cab.fecha_entrega || null,
           fecha_factura: cab.fecha_factura || null,
@@ -242,6 +264,8 @@ export function PedidoForm({ clientes, referencias, stock, initialCab, initialLi
           pagado: cab.pagado === '' ? null : num(cab.pagado),
           fecha_vencimiento: cab.fecha_vencimiento || null,
           fecha_pago: cab.fecha_pago || null,
+          nota_credito_numero: cab.nota_credito_numero.trim() || null,
+          nota_credito_fecha: cab.nota_credito_fecha || null,
         },
         lineas: validas.map((l) => {
           const c = calcLinea(l, refById(l.referencia_id))
@@ -309,6 +333,13 @@ export function PedidoForm({ clientes, referencias, stock, initialCab, initialLi
           )}
         </label>
         <label className="field">
+          <span className="field__label">Almacén (de dónde sale)</span>
+          <select className="input" value={cab.almacen_id} onChange={(e) => { setAlmacenTocado(true); setC({ almacen_id: e.target.value }) }}>
+            <option value="">— elige almacén</option>
+            {almacenes.map((a) => <option key={a.id} value={a.id}>{a.ciudad}</option>)}
+          </select>
+        </label>
+        <label className="field">
           <span className="field__label">Recepción</span>
           <input className="input" type="date" value={cab.fecha_pedido} onChange={(e) => setC({ fecha_pedido: e.target.value })} required />
         </label>
@@ -333,9 +364,12 @@ export function PedidoForm({ clientes, referencias, stock, initialCab, initialLi
           <span style={{ textAlign: 'right' }}>Subtotal c/IVA</span><span />
         </div>
         {lineas.map((l, i) => {
-          const disp = l.referencia_id ? stock[l.referencia_id] : undefined
-          const pide = num(l.cantidad)
-          const c = calcLinea(l, refById(l.referencia_id))
+          const ref = refById(l.referencia_id)
+          // Stock en unidades del almacén elegido; la línea puede ir en cajas.
+          const disp = l.referencia_id && cab.almacen_id ? (stock[l.referencia_id]?.[cab.almacen_id] ?? 0) : undefined
+          const udsPorCaja = ref?.unidad === 'cajas' ? (ref?.unidades_por_caja ?? 1) : 1
+          const pideUds = num(l.cantidad) * udsPorCaja
+          const c = calcLinea(l, ref)
           const sinTarifa = !!l.referencia_id && l.precioBase === ''
           return (
             <div key={i} className="linea-wrap">
@@ -351,11 +385,11 @@ export function PedidoForm({ clientes, referencias, stock, initialCab, initialLi
                 </label>
                 <label className="linea-cell">
                   <span className="linea-cell__lbl">Cantidad</span>
-                  <input className="input" type="number" min="0" placeholder="Cant." value={l.cantidad} onChange={(e) => setLinea(i, { cantidad: e.target.value })} />
+                  <input className="input" type="number" min="0" step="any" placeholder="Cant." value={l.cantidad} onChange={(e) => setLinea(i, { cantidad: e.target.value })} />
                 </label>
                 <label className="linea-cell">
                   <span className="linea-cell__lbl">Precio base (neto)</span>
-                  <input className="input" type="number" min="0" placeholder="Neto" value={l.precioBase} onChange={(e) => setLinea(i, { precioBase: e.target.value })} />
+                  <input className="input" type="number" min="0" step="any" placeholder="Neto" value={l.precioBase} onChange={(e) => setLinea(i, { precioBase: e.target.value })} />
                 </label>
                 <label className="linea-cell">
                   <span className="linea-cell__lbl">% de descuento</span>
@@ -371,7 +405,7 @@ export function PedidoForm({ clientes, referencias, stock, initialCab, initialLi
                 )}
                 {sinTarifa && <span className="stock-bajo">Sin tarifa para este canal — pon el precio a mano · </span>}
                 {disp !== undefined && (
-                  <span className={pide > disp ? 'stock-bajo' : undefined}>Disponible: {disp}{pide > disp ? ` (pides ${pide})` : ''}</span>
+                  <span className={pideUds > disp ? 'stock-bajo' : undefined}>Disponible: {disp} uds{pideUds > disp ? ` (pides ${pideUds})` : ''}</span>
                 )}
               </span>
             </div>
@@ -411,7 +445,7 @@ export function PedidoForm({ clientes, referencias, stock, initialCab, initialLi
           </div>
           <label className="field">
             <span className="field__label">Valor factura (con IVA)</span>
-            <input className="input" type="number" min="0" value={cab.valor_factura}
+            <input className="input" type="number" min="0" step="any" value={cab.valor_factura}
               onChange={(e) => { setValorFacturaTocado(true); setC({ valor_factura: e.target.value }) }} />
             {!valorFacturaTocado
               ? total > 0 && (
@@ -432,7 +466,7 @@ export function PedidoForm({ clientes, referencias, stock, initialCab, initialLi
           </label>
           <label className="field">
             <span className="field__label">Pagado (COP)</span>
-            <input className="input" type="number" min="0" value={cab.pagado} onChange={(e) => setC({ pagado: e.target.value })} />
+            <input className="input" type="number" min="0" step="any" value={cab.pagado} onChange={(e) => setC({ pagado: e.target.value })} />
           </label>
           <label className="field">
             <span className="field__label">Vencimiento</span>
@@ -447,6 +481,18 @@ export function PedidoForm({ clientes, referencias, stock, initialCab, initialLi
             <span className="field__label">Fecha de pago</span>
             <input className="input" type="date" value={cab.fecha_pago} onChange={(e) => setC({ fecha_pago: e.target.value })} />
           </label>
+          {cab.estado === 'anulado' && (
+            <>
+              <label className="field">
+                <span className="field__label">Nº nota de crédito</span>
+                <input className="input" value={cab.nota_credito_numero} onChange={(e) => setC({ nota_credito_numero: e.target.value })} />
+              </label>
+              <label className="field">
+                <span className="field__label">Fecha nota de crédito</span>
+                <input className="input" type="date" value={cab.nota_credito_fecha} onChange={(e) => setC({ nota_credito_fecha: e.target.value })} />
+              </label>
+            </>
+          )}
         </div>
       </div>
       )}

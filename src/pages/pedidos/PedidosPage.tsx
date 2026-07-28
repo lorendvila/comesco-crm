@@ -6,6 +6,9 @@ import type { ClienteResumen } from '../../data/clientes'
 import { listReferencias } from '../../data/referencias'
 import type { ReferenciaResumen } from '../../data/referencias'
 import { getStockMap } from '../../data/inventario'
+import type { StockMap } from '../../data/inventario'
+import { listAlmacenes } from '../../data/almacenes'
+import type { Almacen } from '../../data/almacenes'
 import {
   listPedidos,
   getPedido,
@@ -26,6 +29,7 @@ type Modal = { mode: 'new' } | { mode: 'edit'; pedido: PedidoConLineas } | null
 function toCab(p: PedidoConLineas): CabeceraState {
   return {
     cliente_id: p.cliente_id,
+    almacen_id: p.almacen_id ?? '',
     fecha_pedido: p.fecha_pedido,
     fecha_entrega: p.fecha_entrega ?? '',
     fecha_factura: p.fecha_factura ?? '',
@@ -37,6 +41,8 @@ function toCab(p: PedidoConLineas): CabeceraState {
     pagado: p.pagado == null ? '' : String(p.pagado),
     fecha_vencimiento: p.fecha_vencimiento ?? '',
     fecha_pago: p.fecha_pago ?? '',
+    nota_credito_numero: p.nota_credito_numero ?? '',
+    nota_credito_fecha: p.nota_credito_fecha ?? '',
   }
 }
 
@@ -95,7 +101,8 @@ export function PedidosPage() {
   const [pedidos, setPedidos] = useState<PedidoResumen[]>([])
   const [clientes, setClientes] = useState<ClienteResumen[]>([])
   const [referencias, setReferencias] = useState<ReferenciaResumen[]>([])
-  const [stock, setStock] = useState<Record<string, number>>({})
+  const [almacenes, setAlmacenes] = useState<Almacen[]>([])
+  const [stock, setStock] = useState<StockMap>({})
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [modal, setModal] = useState<Modal>(null)
@@ -132,11 +139,12 @@ export function PedidosPage() {
 
   // Catálogos (una vez)
   useEffect(() => {
-    Promise.all([listClientes(), listReferencias(), getStockMap()])
-      .then(([c, r, s]) => {
+    Promise.all([listClientes(), listReferencias(), getStockMap(), listAlmacenes()])
+      .then(([c, r, s, a]) => {
         setClientes(c)
         setReferencias(r)
         setStock(s)
+        setAlmacenes(a)
       })
       .catch(() => setError('No se pudieron cargar los catálogos.'))
   }, [])
@@ -288,7 +296,9 @@ export function PedidosPage() {
             <PedidoForm
               clientes={clientes}
               referencias={referencias}
+              almacenes={almacenes}
               stock={stock}
+              esNuevo={modal.mode === 'new'}
               initialCab={modal.mode === 'new' ? cabeceraVacia() : toCab(modal.pedido)}
               initialLineas={modal.mode === 'new' ? [] : toLineas(modal.pedido, referencias)}
               submitLabel={modal.mode === 'new' ? 'Crear pedido' : 'Guardar cambios'}

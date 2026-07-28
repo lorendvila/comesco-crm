@@ -25,6 +25,7 @@ export interface ResumenProducto {
 interface LineaRaw {
   cantidad: number
   subtotal_cop: number | null
+  pedidos: { estado: string } | null
   referencias: {
     nombre_producto: string
     formato: string
@@ -34,12 +35,15 @@ interface LineaRaw {
   } | null
 }
 
+// Estados que NO cuentan como venta: cancelado y anulado (factura con NC).
+const ESTADOS_NO_VENTA = ['cancelado', 'anulado']
+
 // Agrega las líneas de pedido por familia y por referencia (RLS: el comercial
 // solo ve las de sus clientes). Calcula ingresos y coste (COGS) para el margen.
 export async function resumenProducto(): Promise<ResumenProducto> {
   const { data, error } = await supabase
     .from('pedido_lineas')
-    .select('cantidad, subtotal_cop, referencias(nombre_producto, formato, categoria, coste_almacen_cop, iva_pct)')
+    .select('cantidad, subtotal_cop, pedidos(estado), referencias(nombre_producto, formato, categoria, coste_almacen_cop, iva_pct)')
     .returns<LineaRaw[]>()
   if (error) throw error
 
@@ -51,6 +55,7 @@ export async function resumenProducto(): Promise<ResumenProducto> {
   for (const l of data ?? []) {
     const r = l.referencias
     if (!r) continue
+    if (l.pedidos && ESTADOS_NO_VENTA.includes(l.pedidos.estado)) continue
     const cat = r.categoria ?? 'Otros'
     const iva = r.iva_pct ?? 0
     const valor = l.subtotal_cop ?? 0 // importe facturado (con IVA), para las tablas de producto
@@ -101,7 +106,7 @@ export async function facturacionMensual(): Promise<MesFacturacion[]> {
   const { data, error } = await supabase
     .from('pedidos')
     .select('fecha_pedido, fecha_factura, valor_factura, pagado, total_cop')
-    .neq('estado', 'cancelado')
+    .not('estado', 'in', '(cancelado,anulado)')
     .returns<PedidoMesRaw[]>()
   if (error) throw error
 
@@ -197,7 +202,7 @@ export async function rotacionReferencias(ventana = 6): Promise<RotacionReferenc
   for (const l of lineasRes.data ?? []) {
     const r = l.referencias
     if (!r) continue
-    if (l.pedidos?.estado === 'cancelado') continue
+    if (l.pedidos && ESTADOS_NO_VENTA.includes(l.pedidos.estado)) continue
     const base = l.pedidos?.fecha_factura ?? l.pedidos?.fecha_pedido
     if (!base) continue
     const mes = base.slice(0, 7)
@@ -223,8 +228,9 @@ export async function rotacionReferencias(ventana = 6): Promise<RotacionReferenc
   const meses = minMes ? mesesEntre(minMes, maxMes && maxMes > hoyMes ? maxMes : hoyMes) : []
   const mesesVentana = meses.slice(-ventana)
 
+  // Stock por referencia = suma de todos los almacenes (una fila por ciudad).
   const stockPorRef = new Map<string, number>()
-  for (const f of inventario) stockPorRef.set(f.referencia_id, f.inv?.cantidad_disponible ?? 0)
+  for (const f of inventario) stockPorRef.set(f.referencia_id, (stockPorRef.get(f.referencia_id) ?? 0) + f.cantidad_disponible)
 
   const refs: RefRotacion[] = [...acc.values()].map((a) => {
     const porMes: Record<string, number> = {}

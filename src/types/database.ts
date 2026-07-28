@@ -7,8 +7,10 @@ export type Json =
   | Json[]
 
 export type Database = {
+  // Allows to automatically instantiate createClient with right options
+  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: '14.5'
+    PostgrestVersion: "14.5"
   }
   public: {
     Tables: {
@@ -42,6 +44,45 @@ export type Database = {
           notas?: string | null
           tipo?: string
           user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "actividades_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "actividades_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      almacenes: {
+        Row: {
+          activo: boolean
+          ciudad: string
+          created_at: string | null
+          id: string
+          nombre: string
+        }
+        Insert: {
+          activo?: boolean
+          ciudad: string
+          created_at?: string | null
+          id?: string
+          nombre: string
+        }
+        Update: {
+          activo?: boolean
+          ciudad?: string
+          created_at?: string | null
+          id?: string
+          nombre?: string
         }
         Relationships: []
       }
@@ -100,7 +141,91 @@ export type Database = {
           razon_social?: string | null
           updated_at?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "clientes_comercial_asignado_id_fkey"
+            columns: ["comercial_asignado_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      comunicaciones: {
+        Row: {
+          asunto: string | null
+          canal: string
+          cliente_id: string
+          created_at: string | null
+          fecha: string | null
+          id: string
+          referencia_externa: string
+        }
+        Insert: {
+          asunto?: string | null
+          canal?: string
+          cliente_id: string
+          created_at?: string | null
+          fecha?: string | null
+          id?: string
+          referencia_externa: string
+        }
+        Update: {
+          asunto?: string | null
+          canal?: string
+          cliente_id?: string
+          created_at?: string | null
+          fecha?: string | null
+          id?: string
+          referencia_externa?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "comunicaciones_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      condiciones_comerciales: {
+        Row: {
+          cliente_id: string
+          comision_pct: number | null
+          created_at: string | null
+          id: string
+          pac_descuento_pct: number | null
+          plazo_pago_dias: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          cliente_id: string
+          comision_pct?: number | null
+          created_at?: string | null
+          id?: string
+          pac_descuento_pct?: number | null
+          plazo_pago_dias?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          cliente_id?: string
+          comision_pct?: number | null
+          created_at?: string | null
+          id?: string
+          pac_descuento_pct?: number | null
+          plazo_pago_dias?: number | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "condiciones_comerciales_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       contactos_cliente: {
         Row: {
@@ -136,37 +261,159 @@ export type Database = {
           telefono?: string | null
           updated_at?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "contactos_cliente_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+        ]
       }
-      condiciones_comerciales: {
+      demanda_estimada: {
         Row: {
+          cantidad: number
           cliente_id: string
-          comision_pct: number | null
           created_at: string | null
           id: string
-          pac_descuento_pct: number | null
-          plazo_pago_dias: number | null
+          origen: string
+          periodo: string | null
+          referencia_id: string
+        }
+        Insert: {
+          cantidad: number
+          cliente_id: string
+          created_at?: string | null
+          id?: string
+          origen?: string
+          periodo?: string | null
+          referencia_id: string
+        }
+        Update: {
+          cantidad?: number
+          cliente_id?: string
+          created_at?: string | null
+          id?: string
+          origen?: string
+          periodo?: string | null
+          referencia_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "demanda_estimada_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "demanda_estimada_referencia_id_fkey"
+            columns: ["referencia_id"]
+            isOneToOne: false
+            referencedRelation: "referencias"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      inventario: {
+        Row: {
+          actualizado_at: string | null
+          almacen_id: string
+          cantidad_disponible: number
+          contenedor: string | null
+          created_at: string | null
+          id: string
+          notas: string | null
+          referencia_id: string
+          ubicacion: string | null
+        }
+        Insert: {
+          actualizado_at?: string | null
+          almacen_id: string
+          cantidad_disponible?: number
+          contenedor?: string | null
+          created_at?: string | null
+          id?: string
+          notas?: string | null
+          referencia_id: string
+          ubicacion?: string | null
+        }
+        Update: {
+          actualizado_at?: string | null
+          almacen_id?: string
+          cantidad_disponible?: number
+          contenedor?: string | null
+          created_at?: string | null
+          id?: string
+          notas?: string | null
+          referencia_id?: string
+          ubicacion?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventario_almacen_id_fkey"
+            columns: ["almacen_id"]
+            isOneToOne: false
+            referencedRelation: "almacenes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventario_referencia_id_fkey"
+            columns: ["referencia_id"]
+            isOneToOne: false
+            referencedRelation: "referencias"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      oportunidad_lineas: {
+        Row: {
+          cantidad: number
+          created_at: string | null
+          id: string
+          oportunidad_id: string
+          precio_estimado_cop: number | null
+          referencia_id: string
+          unidad: string
           updated_at: string | null
         }
         Insert: {
-          cliente_id: string
-          comision_pct?: number | null
+          cantidad: number
           created_at?: string | null
           id?: string
-          pac_descuento_pct?: number | null
-          plazo_pago_dias?: number | null
+          oportunidad_id: string
+          precio_estimado_cop?: number | null
+          referencia_id: string
+          unidad?: string
           updated_at?: string | null
         }
         Update: {
-          cliente_id?: string
-          comision_pct?: number | null
+          cantidad?: number
           created_at?: string | null
           id?: string
-          pac_descuento_pct?: number | null
-          plazo_pago_dias?: number | null
+          oportunidad_id?: string
+          precio_estimado_cop?: number | null
+          referencia_id?: string
+          unidad?: string
           updated_at?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "oportunidad_lineas_oportunidad_id_fkey"
+            columns: ["oportunidad_id"]
+            isOneToOne: false
+            referencedRelation: "oportunidades"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "oportunidad_lineas_referencia_id_fkey"
+            columns: ["referencia_id"]
+            isOneToOne: false
+            referencedRelation: "referencias"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       oportunidades: {
         Row: {
@@ -208,6 +455,234 @@ export type Database = {
           updated_at?: string | null
           valor_estimado?: number | null
         }
+        Relationships: [
+          {
+            foreignKeyName: "oportunidades_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pedido_lineas: {
+        Row: {
+          almacen_id: string | null
+          cantidad: number
+          created_at: string | null
+          descuento_pct: number | null
+          id: string
+          pedido_id: string
+          precio_base_cop: number | null
+          precio_unitario_cop: number | null
+          referencia_id: string
+          subtotal_cop: number | null
+          unidad: string
+        }
+        Insert: {
+          almacen_id?: string | null
+          cantidad: number
+          created_at?: string | null
+          descuento_pct?: number | null
+          id?: string
+          pedido_id: string
+          precio_base_cop?: number | null
+          precio_unitario_cop?: number | null
+          referencia_id: string
+          subtotal_cop?: number | null
+          unidad?: string
+        }
+        Update: {
+          almacen_id?: string | null
+          cantidad?: number
+          created_at?: string | null
+          descuento_pct?: number | null
+          id?: string
+          pedido_id?: string
+          precio_base_cop?: number | null
+          precio_unitario_cop?: number | null
+          referencia_id?: string
+          subtotal_cop?: number | null
+          unidad?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pedido_lineas_almacen_id_fkey"
+            columns: ["almacen_id"]
+            isOneToOne: false
+            referencedRelation: "almacenes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pedido_lineas_pedido_id_fkey"
+            columns: ["pedido_id"]
+            isOneToOne: false
+            referencedRelation: "pedidos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pedido_lineas_referencia_id_fkey"
+            columns: ["referencia_id"]
+            isOneToOne: false
+            referencedRelation: "referencias"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pedidos: {
+        Row: {
+          almacen_id: string | null
+          canal_origen: string
+          cliente_id: string
+          codigo_facturacion_externo: string | null
+          created_at: string | null
+          estado: string
+          fecha_entrega: string | null
+          fecha_factura: string | null
+          fecha_pago: string | null
+          fecha_pedido: string
+          fecha_vencimiento: string | null
+          id: string
+          nota_credito_fecha: string | null
+          nota_credito_numero: string | null
+          notas: string | null
+          numero_factura: string | null
+          numero_pedido: string | null
+          pagado: number | null
+          total_cop: number | null
+          updated_at: string | null
+          valor_factura: number | null
+        }
+        Insert: {
+          almacen_id?: string | null
+          canal_origen?: string
+          cliente_id: string
+          codigo_facturacion_externo?: string | null
+          created_at?: string | null
+          estado?: string
+          fecha_entrega?: string | null
+          fecha_factura?: string | null
+          fecha_pago?: string | null
+          fecha_pedido?: string
+          fecha_vencimiento?: string | null
+          id?: string
+          nota_credito_fecha?: string | null
+          nota_credito_numero?: string | null
+          notas?: string | null
+          numero_factura?: string | null
+          numero_pedido?: string | null
+          pagado?: number | null
+          total_cop?: number | null
+          updated_at?: string | null
+          valor_factura?: number | null
+        }
+        Update: {
+          almacen_id?: string | null
+          canal_origen?: string
+          cliente_id?: string
+          codigo_facturacion_externo?: string | null
+          created_at?: string | null
+          estado?: string
+          fecha_entrega?: string | null
+          fecha_factura?: string | null
+          fecha_pago?: string | null
+          fecha_pedido?: string
+          fecha_vencimiento?: string | null
+          id?: string
+          nota_credito_fecha?: string | null
+          nota_credito_numero?: string | null
+          notas?: string | null
+          numero_factura?: string | null
+          numero_pedido?: string | null
+          pagado?: number | null
+          total_cop?: number | null
+          updated_at?: string | null
+          valor_factura?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pedidos_almacen_id_fkey"
+            columns: ["almacen_id"]
+            isOneToOne: false
+            referencedRelation: "almacenes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pedidos_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      referencias: {
+        Row: {
+          cajas_por_palet: number | null
+          categoria: string | null
+          codigo_facturacion_externo: string | null
+          codigo_interno: string
+          coste_almacen_cop: number | null
+          created_at: string | null
+          deleted_at: string | null
+          formato: string
+          id: string
+          iva_pct: number
+          nombre_producto: string
+          precio_food_service_cop: number | null
+          precio_industria_cop: number | null
+          precio_retail_cop: number | null
+          proveedor: string | null
+          sku: string | null
+          unidad: string
+          unidades_por_caja: number | null
+          unidades_por_palet: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          cajas_por_palet?: number | null
+          categoria?: string | null
+          codigo_facturacion_externo?: string | null
+          codigo_interno?: string
+          coste_almacen_cop?: number | null
+          created_at?: string | null
+          deleted_at?: string | null
+          formato: string
+          id?: string
+          iva_pct?: number
+          nombre_producto: string
+          precio_food_service_cop?: number | null
+          precio_industria_cop?: number | null
+          precio_retail_cop?: number | null
+          proveedor?: string | null
+          sku?: string | null
+          unidad?: string
+          unidades_por_caja?: number | null
+          unidades_por_palet?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          cajas_por_palet?: number | null
+          categoria?: string | null
+          codigo_facturacion_externo?: string | null
+          codigo_interno?: string
+          coste_almacen_cop?: number | null
+          created_at?: string | null
+          deleted_at?: string | null
+          formato?: string
+          id?: string
+          iva_pct?: number
+          nombre_producto?: string
+          precio_food_service_cop?: number | null
+          precio_industria_cop?: number | null
+          precio_retail_cop?: number | null
+          proveedor?: string | null
+          sku?: string | null
+          unidad?: string
+          unidades_por_caja?: number | null
+          unidades_por_palet?: number | null
+          updated_at?: string | null
+        }
         Relationships: []
       }
       tareas: {
@@ -241,212 +716,22 @@ export type Database = {
           oportunidad_id?: string | null
           updated_at?: string | null
         }
-        Relationships: []
-      }
-      pedidos: {
-        Row: {
-          canal_origen: string
-          cliente_id: string
-          codigo_facturacion_externo: string | null
-          created_at: string | null
-          estado: string
-          fecha_entrega: string | null
-          fecha_factura: string | null
-          fecha_pago: string | null
-          fecha_pedido: string
-          fecha_vencimiento: string | null
-          id: string
-          notas: string | null
-          numero_factura: string | null
-          numero_pedido: string | null
-          pagado: number | null
-          total_cop: number | null
-          updated_at: string | null
-          valor_factura: number | null
-        }
-        Insert: {
-          canal_origen?: string
-          cliente_id: string
-          codigo_facturacion_externo?: string | null
-          created_at?: string | null
-          estado?: string
-          fecha_entrega?: string | null
-          fecha_factura?: string | null
-          fecha_pago?: string | null
-          fecha_pedido?: string
-          fecha_vencimiento?: string | null
-          id?: string
-          notas?: string | null
-          numero_factura?: string | null
-          numero_pedido?: string | null
-          pagado?: number | null
-          total_cop?: number | null
-          updated_at?: string | null
-          valor_factura?: number | null
-        }
-        Update: {
-          canal_origen?: string
-          cliente_id?: string
-          codigo_facturacion_externo?: string | null
-          created_at?: string | null
-          estado?: string
-          fecha_entrega?: string | null
-          fecha_factura?: string | null
-          fecha_pago?: string | null
-          fecha_pedido?: string
-          fecha_vencimiento?: string | null
-          id?: string
-          notas?: string | null
-          numero_factura?: string | null
-          numero_pedido?: string | null
-          pagado?: number | null
-          total_cop?: number | null
-          updated_at?: string | null
-          valor_factura?: number | null
-        }
-        Relationships: []
-      }
-      pedido_lineas: {
-        Row: {
-          cantidad: number
-          created_at: string | null
-          id: string
-          pedido_id: string
-          precio_unitario_cop: number | null
-          precio_base_cop: number | null
-          descuento_pct: number | null
-          referencia_id: string
-          subtotal_cop: number | null
-          unidad: string
-        }
-        Insert: {
-          cantidad: number
-          created_at?: string | null
-          id?: string
-          pedido_id: string
-          precio_unitario_cop?: number | null
-          precio_base_cop?: number | null
-          descuento_pct?: number | null
-          referencia_id: string
-          subtotal_cop?: number | null
-          unidad?: string
-        }
-        Update: {
-          cantidad?: number
-          created_at?: string | null
-          id?: string
-          pedido_id?: string
-          precio_unitario_cop?: number | null
-          precio_base_cop?: number | null
-          descuento_pct?: number | null
-          referencia_id?: string
-          subtotal_cop?: number | null
-          unidad?: string
-        }
-        Relationships: []
-      }
-      referencias: {
-        Row: {
-          cajas_por_palet: number | null
-          categoria: string | null
-          codigo_facturacion_externo: string | null
-          codigo_interno: string
-          coste_almacen_cop: number | null
-          precio_food_service_cop: number | null
-          precio_retail_cop: number | null
-          precio_industria_cop: number | null
-          created_at: string | null
-          deleted_at: string | null
-          formato: string
-          id: string
-          iva_pct: number
-          nombre_producto: string
-          proveedor: string | null
-          sku: string | null
-          unidad: string
-          unidades_por_caja: number | null
-          unidades_por_palet: number | null
-          updated_at: string | null
-        }
-        Insert: {
-          cajas_por_palet?: number | null
-          categoria?: string | null
-          codigo_facturacion_externo?: string | null
-          codigo_interno?: string
-          coste_almacen_cop?: number | null
-          precio_food_service_cop?: number | null
-          precio_retail_cop?: number | null
-          precio_industria_cop?: number | null
-          created_at?: string | null
-          deleted_at?: string | null
-          formato: string
-          id?: string
-          iva_pct?: number
-          nombre_producto: string
-          proveedor?: string | null
-          sku?: string | null
-          unidad?: string
-          unidades_por_caja?: number | null
-          unidades_por_palet?: number | null
-          updated_at?: string | null
-        }
-        Update: {
-          cajas_por_palet?: number | null
-          categoria?: string | null
-          codigo_facturacion_externo?: string | null
-          codigo_interno?: string
-          coste_almacen_cop?: number | null
-          precio_food_service_cop?: number | null
-          precio_retail_cop?: number | null
-          precio_industria_cop?: number | null
-          created_at?: string | null
-          deleted_at?: string | null
-          formato?: string
-          id?: string
-          iva_pct?: number
-          nombre_producto?: string
-          proveedor?: string | null
-          sku?: string | null
-          unidad?: string
-          unidades_por_caja?: number | null
-          unidades_por_palet?: number | null
-          updated_at?: string | null
-        }
-        Relationships: []
-      }
-      inventario: {
-        Row: {
-          actualizado_at: string | null
-          cantidad_disponible: number
-          contenedor: string | null
-          created_at: string | null
-          id: string
-          notas: string | null
-          referencia_id: string
-          ubicacion: string | null
-        }
-        Insert: {
-          actualizado_at?: string | null
-          cantidad_disponible?: number
-          contenedor?: string | null
-          created_at?: string | null
-          id?: string
-          notas?: string | null
-          referencia_id: string
-          ubicacion?: string | null
-          valor_unitario_cop?: number | null
-        }
-        Update: {
-          actualizado_at?: string | null
-          cantidad_disponible?: number
-          contenedor?: string | null
-          created_at?: string | null
-          id?: string
-          notas?: string | null
-          referencia_id?: string
-          ubicacion?: string | null
-        }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "tareas_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tareas_oportunidad_id_fkey"
+            columns: ["oportunidad_id"]
+            isOneToOne: false
+            referencedRelation: "oportunidades"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       users: {
         Row: {
@@ -482,24 +767,142 @@ export type Database = {
         Relationships: []
       }
     }
-    Views: Record<string, never>
-    Functions: {
-      current_user_id: { Args: Record<string, never>; Returns: string }
-      is_admin: { Args: Record<string, never>; Returns: boolean }
-      siguiente_numero_pedido: { Args: Record<string, never>; Returns: string }
+    Views: {
+      [_ in never]: never
     }
-    Enums: Record<string, never>
-    CompositeTypes: Record<string, never>
+    Functions: {
+      current_user_id: { Args: never; Returns: string }
+      is_admin: { Args: never; Returns: boolean }
+      siguiente_numero_pedido: { Args: never; Returns: string }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
   }
 }
 
-type PublicSchema = Database['public']
+type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
 
-export type Tables<T extends keyof PublicSchema['Tables']> =
-  PublicSchema['Tables'][T]['Row']
+type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
 
-export type TablesInsert<T extends keyof PublicSchema['Tables']> =
-  PublicSchema['Tables'][T]['Insert']
+export type Tables<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
+      Row: infer R
+    }
+    ? R
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])
+    ? (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
+        Row: infer R
+      }
+      ? R
+      : never
+    : never
 
-export type TablesUpdate<T extends keyof PublicSchema['Tables']> =
-  PublicSchema['Tables'][T]['Update']
+export type TablesInsert<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Insert: infer I
+    }
+    ? I
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Insert: infer I
+      }
+      ? I
+      : never
+    : never
+
+export type TablesUpdate<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Update: infer U
+    }
+    ? U
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Update: infer U
+      }
+      ? U
+      : never
+    : never
+
+export type Enums<
+  DefaultSchemaEnumNameOrOptions extends
+    | keyof DefaultSchema["Enums"]
+    | { schema: keyof DatabaseWithoutInternals },
+  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
+    : never = never,
+> = DefaultSchemaEnumNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
+  : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
+    ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
+    : never
+
+export type CompositeTypes<
+  PublicCompositeTypeNameOrOptions extends
+    | keyof DefaultSchema["CompositeTypes"]
+    | { schema: keyof DatabaseWithoutInternals },
+  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
+    : never = never,
+> = PublicCompositeTypeNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
+  : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
+    ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
+    : never
+
+export const Constants = {
+  public: {
+    Enums: {},
+  },
+} as const

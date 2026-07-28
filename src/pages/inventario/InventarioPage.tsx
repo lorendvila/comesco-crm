@@ -30,6 +30,7 @@ export function InventarioPage() {
   const { profile } = useAuth()
   const isAdmin = profile?.role === 'admin'
   const [filas, setFilas] = useState<InventarioFila[]>([])
+  const [ciudad, setCiudad] = useState<string>('') // '' = todas
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [editando, setEditando] = useState<InventarioFila | null>(null)
@@ -45,45 +46,22 @@ export function InventarioPage() {
 
   useEffect(cargar, [])
 
-  const valorTotal = useMemo(
-    () => filas.reduce((s, f) => s + (f.inv ? f.inv.cantidad_disponible * (costeConComision(f.coste_almacen_cop) ?? 0) : 0), 0),
-    [filas],
-  )
+  const ciudades = useMemo(() => [...new Set(filas.map((f) => f.almacen.ciudad))].sort(), [filas])
+  const visibles = useMemo(() => (ciudad ? filas.filter((f) => f.almacen.ciudad === ciudad) : filas), [filas, ciudad])
 
-  // Exporta el inventario a CSV para cruzar y sumar los valores de coste en
-  // Excel (almacén / DIAN). Los importes van como número entero (COP) para que
-  // Excel los sume sin líos de separadores.
-  const exportar = () => {
-    downloadCSV(
-      `inventario_${hoyISO()}.csv`,
-      ['Código', 'SKU', 'Producto', 'Formato', 'Categoría', 'Disponible', 'Coste ud. COP', 'Valor total COP', 'Ubicación', 'Contenedor', 'Actualizado'],
-      filas.map((f) => {
-        const costeUd = costeConComision(f.coste_almacen_cop)
-        const disp = f.inv?.cantidad_disponible ?? 0
-        return [
-          f.codigo_interno,
-          f.sku ?? '',
-          f.nombre_producto,
-          f.formato,
-          f.categoria ?? '',
-          disp,
-          costeUd == null ? '' : Math.round(costeUd),
-          costeUd == null ? '' : Math.round(disp * costeUd),
-          f.inv?.ubicacion ?? '',
-          f.inv?.contenedor ?? '',
-          f.inv?.actualizado_at ? formatFechaHora(f.inv.actualizado_at) : '',
-        ]
-      }),
-    )
-  }
+  // Valor del stock a la vista (respeta el filtro de ciudad). En unidades × coste.
+  const valorTotal = useMemo(
+    () => visibles.reduce((s, f) => s + f.cantidad_disponible * (costeConComision(f.coste_almacen_cop) ?? 0), 0),
+    [visibles],
+  )
 
   const abrir = (f: InventarioFila) => {
     setForm({
-      cantidad_disponible: f.inv ? String(f.inv.cantidad_disponible) : '',
-      ubicacion: f.inv?.ubicacion ?? '',
-      contenedor: f.inv?.contenedor ?? '',
+      cantidad_disponible: String(f.cantidad_disponible),
+      ubicacion: f.ubicacion ?? '',
+      contenedor: f.contenedor ?? '',
       coste: f.coste_almacen_cop == null ? '' : String(f.coste_almacen_cop),
-      notas: f.inv?.notas ?? '',
+      notas: f.notas ?? '',
       precioFs: strOrEmpty(f.precio_food_service_cop),
       precioRetail: strOrEmpty(f.precio_retail_cop),
       precioIndustria: strOrEmpty(f.precio_industria_cop),
@@ -95,7 +73,7 @@ export function InventarioPage() {
     e.preventDefault()
     if (!editando) return
     try {
-      await upsertInventario(editando.referencia_id, {
+      await upsertInventario(editando.referencia_id, editando.almacen.id, {
         cantidad_disponible: num(form.cantidad_disponible),
         ubicacion: form.ubicacion.trim() || null,
         contenedor: form.contenedor.trim() || null,
@@ -114,23 +92,58 @@ export function InventarioPage() {
     }
   }
 
+  // Exporta el inventario a CSV (una fila por producto y ciudad). Importes en
+  // entero COP para que Excel los sume sin líos de separadores.
+  const exportar = () => {
+    downloadCSV(
+      `inventario_${hoyISO()}.csv`,
+      ['Código', 'SKU', 'Producto', 'Formato', 'Categoría', 'Ciudad', 'Disponible (uds)', 'Coste ud. COP', 'Valor total COP', 'Ubicación', 'Contenedor', 'Actualizado'],
+      visibles.map((f) => {
+        const costeUd = costeConComision(f.coste_almacen_cop)
+        return [
+          f.codigo_interno,
+          f.sku ?? '',
+          f.nombre_producto,
+          f.formato,
+          f.categoria ?? '',
+          f.almacen.ciudad,
+          f.cantidad_disponible,
+          costeUd == null ? '' : Math.round(costeUd),
+          costeUd == null ? '' : Math.round(f.cantidad_disponible * costeUd),
+          f.ubicacion ?? '',
+          f.contenedor ?? '',
+          f.actualizado_at ? formatFechaHora(f.actualizado_at) : '',
+        ]
+      }),
+    )
+  }
+
   return (
     <div className="stack stack-6">
       <div className="page-header">
         <div>
           <h1 className="t-display">Inventario</h1>
-          <p className="t-body-sm">Stock actual por referencia. Se actualiza a mano (foto semanal del almacén).</p>
+          <p className="t-body-sm">Stock actual por referencia y almacén, en unidades. Se actualiza a mano (foto semanal).</p>
         </div>
-        <button className="btn btn-outline btn-sm" onClick={exportar} disabled={filas.length === 0}>
+        <button className="btn btn-outline btn-sm" onClick={exportar} disabled={visibles.length === 0}>
           Exportar inventario (CSV)
         </button>
       </div>
 
-      <div className="summary-row">
-        <div className="card-metric">
-          <p className="card-metric__label">Valor total del inventario</p>
-          <p className="card-metric__value">{formatCOP(valorTotal)}</p>
-          <p className="card-metric__sub">Disponible × valor unitario</p>
+      <div className="card stack stack-3">
+        <div className="cluster cluster-3" style={{ alignItems: 'flex-end' }}>
+          <label className="field" style={{ minWidth: 200 }}>
+            <span className="field__label">Almacén / ciudad</span>
+            <select className="input" value={ciudad} onChange={(e) => setCiudad(e.target.value)}>
+              <option value="">Todas</option>
+              {ciudades.map((c) => <option key={c} value={c}>{c}</option>)}
+            </select>
+          </label>
+          <div className="card-metric" style={{ marginLeft: 'auto' }}>
+            <p className="card-metric__label">Valor del stock{ciudad ? ` · ${ciudad}` : ' · todas'}</p>
+            <p className="card-metric__value">{formatCOP(valorTotal)}</p>
+            <p className="card-metric__sub">Disponible × valor unitario</p>
+          </div>
         </div>
       </div>
 
@@ -146,7 +159,8 @@ export function InventarioPage() {
                 <th>SKU</th>
                 <th>Producto</th>
                 <th>Formato</th>
-                <th>Disponible</th>
+                <th>Ciudad</th>
+                <th>Disponible (uds)</th>
                 <th>Coste ud.</th>
                 <th>Valor</th>
                 <th>Ubicación</th>
@@ -156,8 +170,8 @@ export function InventarioPage() {
               </tr>
             </thead>
             <tbody>
-              {filas.map((f) => (
-                <tr key={f.referencia_id}>
+              {visibles.map((f) => (
+                <tr key={`${f.referencia_id}-${f.almacen.id}`}>
                   <td className="mono">{f.codigo_interno}</td>
                   <td className="mono">{f.sku ?? '—'}</td>
                   <td>
@@ -165,12 +179,13 @@ export function InventarioPage() {
                     {f.nombre_producto}
                   </td>
                   <td>{f.formato}</td>
-                  <td>{f.inv ? f.inv.cantidad_disponible : 0}</td>
+                  <td>{f.almacen.ciudad}</td>
+                  <td>{f.cantidad_disponible}</td>
                   <td>{formatCOP(costeConComision(f.coste_almacen_cop))}</td>
-                  <td>{formatCOP((f.inv?.cantidad_disponible ?? 0) * (costeConComision(f.coste_almacen_cop) ?? 0))}</td>
-                  <td>{f.inv?.ubicacion ?? '—'}</td>
-                  <td>{f.inv?.contenedor ?? '—'}</td>
-                  <td>{f.inv?.actualizado_at ? formatFechaHora(f.inv.actualizado_at) : '—'}</td>
+                  <td>{formatCOP(f.cantidad_disponible * (costeConComision(f.coste_almacen_cop) ?? 0))}</td>
+                  <td>{f.ubicacion ?? '—'}</td>
+                  <td>{f.contenedor ?? '—'}</td>
+                  <td>{f.actualizado_at ? formatFechaHora(f.actualizado_at) : '—'}</td>
                   {isAdmin && (
                     <td><button className="btn btn-sm btn-outline" onClick={() => abrir(f)}>Editar</button></td>
                   )}
@@ -184,30 +199,31 @@ export function InventarioPage() {
       {editando && (
         <div className="modal-overlay" onClick={() => setEditando(null)}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <h2 className="t-heading" style={{ marginBottom: 'var(--sp-2)' }}>{editando.nombre_producto} · {editando.formato}</h2>
+            <h2 className="t-heading" style={{ marginBottom: 'var(--sp-1)' }}>{editando.nombre_producto} · {editando.formato}</h2>
+            <p className="t-body-sm" style={{ marginBottom: 'var(--sp-2)' }}>Almacén: <strong>{editando.almacen.ciudad}</strong></p>
             <form className="form-grid" onSubmit={guardar}>
               <label className="field">
-                <span className="field__label">Cantidad disponible</span>
-                <input className="input" type="number" min="0" value={form.cantidad_disponible} onChange={(e) => setForm({ ...form, cantidad_disponible: e.target.value })} />
+                <span className="field__label">Cantidad disponible (unidades)</span>
+                <input className="input" type="number" min="0" step="any" value={form.cantidad_disponible} onChange={(e) => setForm({ ...form, cantidad_disponible: e.target.value })} />
               </label>
               <label className="field">
                 <span className="field__label">Coste hasta almacén (COP)</span>
-                <input className="input" type="number" min="0" value={form.coste} onChange={(e) => setForm({ ...form, coste: e.target.value })} />
+                <input className="input" type="number" min="0" step="any" value={form.coste} onChange={(e) => setForm({ ...form, coste: e.target.value })} />
               </label>
               <div className="field field--full">
                 <span className="field__label">Tarifa base por canal (neto, sin IVA)</span>
                 <div className="cluster cluster-3">
                   <label className="field" style={{ flex: 1 }}>
                     <span className="t-caption">Food Service</span>
-                    <input className="input" type="number" min="0" value={form.precioFs} onChange={(e) => setForm({ ...form, precioFs: e.target.value })} />
+                    <input className="input" type="number" min="0" step="any" value={form.precioFs} onChange={(e) => setForm({ ...form, precioFs: e.target.value })} />
                   </label>
                   <label className="field" style={{ flex: 1 }}>
                     <span className="t-caption">Retail</span>
-                    <input className="input" type="number" min="0" value={form.precioRetail} onChange={(e) => setForm({ ...form, precioRetail: e.target.value })} />
+                    <input className="input" type="number" min="0" step="any" value={form.precioRetail} onChange={(e) => setForm({ ...form, precioRetail: e.target.value })} />
                   </label>
                   <label className="field" style={{ flex: 1 }}>
                     <span className="t-caption">Industria</span>
-                    <input className="input" type="number" min="0" value={form.precioIndustria} onChange={(e) => setForm({ ...form, precioIndustria: e.target.value })} />
+                    <input className="input" type="number" min="0" step="any" value={form.precioIndustria} onChange={(e) => setForm({ ...form, precioIndustria: e.target.value })} />
                   </label>
                 </div>
               </div>
