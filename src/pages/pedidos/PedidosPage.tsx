@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { CANALES_ORIGEN, ESTADOS_PEDIDO, formatCOP, formatFecha, labelDe, colorEstadoPedido } from '../../data/constants'
 import { Badge } from '../../components/Badge'
 import { listClientes } from '../../data/clientes'
@@ -63,6 +63,34 @@ function toLineas(p: PedidoConLineas, referencias: ReferenciaResumen[]): LineaSt
 
 const hoyISO = () => new Date().toISOString().slice(0, 10)
 
+// Columnas por las que se puede ordenar la lista, con su valor de comparación.
+type SortCol = 'numero_pedido' | 'fecha_pedido' | 'cliente' | 'estado' | 'total_cop' | 'numero_factura' | 'fecha_vencimiento'
+type SortDir = 'asc' | 'desc'
+
+const sortValor: Record<SortCol, (p: PedidoResumen) => string | number | null> = {
+  numero_pedido: (p) => p.numero_pedido,
+  fecha_pedido: (p) => p.fecha_pedido,
+  cliente: (p) => p.clientes?.nombre ?? null,
+  estado: (p) => p.estado,
+  total_cop: (p) => p.total_cop,
+  numero_factura: (p) => p.numero_factura,
+  fecha_vencimiento: (p) => p.fecha_vencimiento,
+}
+
+// Ordena una copia; los vacíos (null) siempre al final.
+function ordenar(pedidos: PedidoResumen[], col: SortCol, dir: SortDir): PedidoResumen[] {
+  const factor = dir === 'asc' ? 1 : -1
+  return [...pedidos].sort((a, b) => {
+    const va = sortValor[col](a)
+    const vb = sortValor[col](b)
+    if (va == null && vb == null) return 0
+    if (va == null) return 1
+    if (vb == null) return -1
+    if (typeof va === 'number' && typeof vb === 'number') return (va - vb) * factor
+    return String(va).localeCompare(String(vb), 'es') * factor
+  })
+}
+
 export function PedidosPage() {
   const [pedidos, setPedidos] = useState<PedidoResumen[]>([])
   const [clientes, setClientes] = useState<ClienteResumen[]>([])
@@ -73,6 +101,22 @@ export function PedidosPage() {
   const [modal, setModal] = useState<Modal>(null)
   const [nextNum, setNextNum] = useState<string>('')
   const [filtro, setFiltro] = useState<FiltroPedidos>({})
+  const [sortCol, setSortCol] = useState<SortCol>('numero_pedido')
+  const [sortDir, setSortDir] = useState<SortDir>('desc')
+
+  const pedidosOrdenados = useMemo(() => ordenar(pedidos, sortCol, sortDir), [pedidos, sortCol, sortDir])
+
+  // Clic en cabecera: si es la columna activa alterna sentido; si no, la
+  // selecciona (ascendente por defecto, salvo Nº pedido que empieza en desc).
+  const ordenarPor = (col: SortCol) => {
+    if (col === sortCol) {
+      setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))
+    } else {
+      setSortCol(col)
+      setSortDir(col === 'numero_pedido' ? 'desc' : 'asc')
+    }
+  }
+  const flecha = (col: SortCol) => (col === sortCol ? (sortDir === 'asc' ? ' ▲' : ' ▼') : '')
 
   const refrescarStock = () => getStockMap().then(setStock).catch(() => {})
 
@@ -174,6 +218,13 @@ export function PedidosPage() {
               {clientes.map((c) => <option key={c.id} value={c.id}>{c.nombre}</option>)}
             </select>
           </label>
+          <label className="field" style={{ minWidth: 160 }}>
+            <span className="field__label">Estado</span>
+            <select className="input" value={filtro.estado ?? ''} onChange={(e) => setFiltro({ ...filtro, estado: e.target.value || undefined })}>
+              <option value="">Todos</option>
+              {ESTADOS_PEDIDO.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
+            </select>
+          </label>
           <button className="btn btn-sm btn-outline" onClick={() => setFiltro({})}>Limpiar</button>
         </div>
         <div className="cluster cluster-2">
@@ -190,29 +241,33 @@ export function PedidosPage() {
           <table className="data-table">
             <thead>
               <tr>
-                <th>Nº pedido</th>
-                <th>Recepción</th>
-                <th>Cliente</th>
+                <th className="th-sort" onClick={() => ordenarPor('numero_pedido')}>Nº pedido{flecha('numero_pedido')}</th>
+                <th className="th-sort" onClick={() => ordenarPor('fecha_pedido')}>Recepción{flecha('fecha_pedido')}</th>
+                <th className="th-sort" onClick={() => ordenarPor('cliente')}>Cliente{flecha('cliente')}</th>
                 <th>Canal</th>
-                <th>Estado</th>
-                <th>Total</th>
+                <th className="th-sort" onClick={() => ordenarPor('estado')}>Estado{flecha('estado')}</th>
+                <th className="th-sort" onClick={() => ordenarPor('numero_factura')}>Nº factura{flecha('numero_factura')}</th>
+                <th className="th-sort" onClick={() => ordenarPor('fecha_vencimiento')}>Vencimiento{flecha('fecha_vencimiento')}</th>
+                <th className="th-sort" onClick={() => ordenarPor('total_cop')}>Total{flecha('total_cop')}</th>
                 <th></th>
               </tr>
             </thead>
             <tbody>
-              {pedidos.map((p) => (
+              {pedidosOrdenados.map((p) => (
                 <tr key={p.id} onClick={() => abrirEdicion(p.id)}>
                   <td>{p.numero_pedido ?? '—'}</td>
                   <td>{formatFecha(p.fecha_pedido)}</td>
                   <td>{p.clientes?.nombre ?? '—'}</td>
                   <td>{labelDe(CANALES_ORIGEN, p.canal_origen)}</td>
                   <td><Badge color={colorEstadoPedido(p.estado)}>{labelDe(ESTADOS_PEDIDO, p.estado)}</Badge></td>
+                  <td>{p.numero_factura ?? '—'}</td>
+                  <td>{formatFecha(p.fecha_vencimiento)}</td>
                   <td>{formatCOP(p.total_cop)}</td>
                   <td><button className="btn btn-sm btn-outline" onClick={(e) => { e.stopPropagation(); abrirEdicion(p.id) }}>Ver</button></td>
                 </tr>
               ))}
-              {pedidos.length === 0 && (
-                <tr><td colSpan={7} className="t-body-sm">No hay pedidos con estos filtros.</td></tr>
+              {pedidosOrdenados.length === 0 && (
+                <tr><td colSpan={9} className="t-body-sm">No hay pedidos con estos filtros.</td></tr>
               )}
             </tbody>
           </table>

@@ -451,6 +451,14 @@ select.input {
 }
 .mono { font-family: var(--font-mono); color: var(--text-3); }
 
+/* Cabecera de columna ordenable */
+.data-table thead th.th-sort {
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+}
+.data-table thead th.th-sort:hover { color: var(--text-2); }
+
 /* Tabla no-clicable (filas sin cursor de enlace) */
 .data-table--plain tbody tr { cursor: default; }
 .link-cliente:hover { color: var(--accent); }

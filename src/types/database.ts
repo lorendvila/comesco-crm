@@ -57,6 +57,7 @@ export type Database = {
           direccion_entrega: string | null
           estado: string
           id: string
+          nit: string | null
           nombre: string
           notas: string | null
           pais: string | null
@@ -74,6 +75,7 @@ export type Database = {
           direccion_entrega?: string | null
           estado?: string
           id?: string
+          nit?: string | null
           nombre: string
           notas?: string | null
           pais?: string | null
@@ -91,6 +93,7 @@ export type Database = {
           direccion_entrega?: string | null
           estado?: string
           id?: string
+          nit?: string | null
           nombre?: string
           notas?: string | null
           pais?: string | null

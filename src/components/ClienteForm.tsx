@@ -8,6 +8,7 @@ import type { TablesInsert } from '../types/database'
 export interface ClienteFormValues {
   nombre: string
   razon_social: string
+  nit: string
   canal: string
   estado: string
   ciudad: string
@@ -20,6 +21,7 @@ export interface ClienteFormValues {
 export const VALORES_VACIOS: ClienteFormValues = {
   nombre: '',
   razon_social: '',
+  nit: '',
   canal: '',
   estado: 'lead',
   ciudad: '',
@@ -33,6 +35,7 @@ export function clienteToValues(c: Cliente): ClienteFormValues {
   return {
     nombre: c.nombre,
     razon_social: c.razon_social ?? '',
+    nit: c.nit ?? '',
     canal: c.canal ?? '',
     estado: c.estado,
     ciudad: c.ciudad ?? '',
@@ -47,6 +50,7 @@ export function valuesToPayload(v: ClienteFormValues): TablesInsert<'clientes'> 
   return {
     nombre: v.nombre.trim(),
     razon_social: v.razon_social.trim() || null,
+    nit: v.nit.trim() || null,
     canal: v.canal || null,
     estado: v.estado,
     ciudad: v.ciudad.trim() || null,
@@ -100,6 +104,11 @@ export function ClienteForm({ initial, isAdmin, usuarios, submitLabel, onSubmit,
       <label className="field field--full">
         <span className="field__label">Razón social (facturación)</span>
         <input className="input" value={v.razon_social} onChange={(e) => set({ razon_social: e.target.value })} />
+      </label>
+
+      <label className="field field--full">
+        <span className="field__label">NIT (facturación / cobranza)</span>
+        <input className="input" value={v.nit} onChange={(e) => set({ nit: e.target.value })} />
       </label>
 
       <label className="field">

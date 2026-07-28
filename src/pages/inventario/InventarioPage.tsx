@@ -4,6 +4,9 @@ import { useAuth } from '../../auth/AuthProvider'
 import { listInventario, upsertInventario, updateCosteReferencia, updateTarifasReferencia } from '../../data/inventario'
 import type { InventarioFila } from '../../data/inventario'
 import { formatCOP, formatFechaHora, colorFamilia, costeConComision } from '../../data/constants'
+import { downloadCSV } from '../../lib/csv'
+
+const hoyISO = () => new Date().toISOString().slice(0, 10)
 
 interface FormState {
   cantidad_disponible: string
@@ -46,6 +49,33 @@ export function InventarioPage() {
     () => filas.reduce((s, f) => s + (f.inv ? f.inv.cantidad_disponible * (costeConComision(f.coste_almacen_cop) ?? 0) : 0), 0),
     [filas],
   )
+
+  // Exporta el inventario a CSV para cruzar y sumar los valores de coste en
+  // Excel (almacén / DIAN). Los importes van como número entero (COP) para que
+  // Excel los sume sin líos de separadores.
+  const exportar = () => {
+    downloadCSV(
+      `inventario_${hoyISO()}.csv`,
+      ['Código', 'SKU', 'Producto', 'Formato', 'Categoría', 'Disponible', 'Coste ud. COP', 'Valor total COP', 'Ubicación', 'Contenedor', 'Actualizado'],
+      filas.map((f) => {
+        const costeUd = costeConComision(f.coste_almacen_cop)
+        const disp = f.inv?.cantidad_disponible ?? 0
+        return [
+          f.codigo_interno,
+          f.sku ?? '',
+          f.nombre_producto,
+          f.formato,
+          f.categoria ?? '',
+          disp,
+          costeUd == null ? '' : Math.round(costeUd),
+          costeUd == null ? '' : Math.round(disp * costeUd),
+          f.inv?.ubicacion ?? '',
+          f.inv?.contenedor ?? '',
+          f.inv?.actualizado_at ? formatFechaHora(f.inv.actualizado_at) : '',
+        ]
+      }),
+    )
+  }
 
   const abrir = (f: InventarioFila) => {
     setForm({
@@ -91,6 +121,9 @@ export function InventarioPage() {
           <h1 className="t-display">Inventario</h1>
           <p className="t-body-sm">Stock actual por referencia. Se actualiza a mano (foto semanal del almacén).</p>
         </div>
+        <button className="btn btn-outline btn-sm" onClick={exportar} disabled={filas.length === 0}>
+          Exportar inventario (CSV)
+        </button>
       </div>
 
       <div className="summary-row">

@@ -59,6 +59,7 @@ export function DatosTab({ cliente, onSaved }: Props) {
   return (
     <div className="stack stack-4" style={{ maxWidth: 720 }}>
       <Dato label="Razón social" value={cliente.razon_social} />
+      <Dato label="NIT" value={cliente.nit} />
       <div className="grid-2">
         <Dato label="Canal" value={labelDe(CANALES, cliente.canal)} />
         <Dato label="Ciudad" value={cliente.ciudad} />

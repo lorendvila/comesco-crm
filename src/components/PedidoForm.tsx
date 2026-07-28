@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { FormEvent } from 'react'
-import { CANALES_ORIGEN, ESTADOS_PEDIDO, formatCOP, costeRealNeto, pacPorCanal } from '../data/constants'
+import { CANALES_ORIGEN, ESTADOS_PEDIDO, formatCOP, costeRealNeto, pacPorCanal, labelDe } from '../data/constants'
 import { useAuth } from '../auth/AuthProvider'
 import type { ClienteResumen } from '../data/clientes'
 import type { ReferenciaResumen } from '../data/referencias'
@@ -51,6 +51,11 @@ export function cabeceraVacia(): CabeceraState {
 }
 
 export const LINEA_VACIA: LineaState = { referencia_id: '', cantidad: '', unidad: 'cajas', precioBase: '', descuento: '' }
+
+// Estados que un comercial puede fijar. Facturado/Cobrado/Cancelado son solo
+// del admin (marcar la facturación es un acto de facturación). El backend lo
+// refuerza con el trigger pedidos_proteger_facturacion.
+const ESTADOS_COMERCIAL = ['recibido', 'entregado']
 
 const num = (s: string) => {
   const n = Number(s)
@@ -287,9 +292,21 @@ export function PedidoForm({ clientes, referencias, stock, initialCab, initialLi
         </label>
         <label className="field">
           <span className="field__label">Estado</span>
-          <select className="input" value={cab.estado} onChange={(e) => setC({ estado: e.target.value })}>
-            {ESTADOS_PEDIDO.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
-          </select>
+          {isAdmin ? (
+            <select className="input" value={cab.estado} onChange={(e) => setC({ estado: e.target.value })}>
+              {ESTADOS_PEDIDO.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
+            </select>
+          ) : ESTADOS_COMERCIAL.includes(cab.estado) ? (
+            // El comercial solo mueve entre Recibido y Entregado.
+            <select className="input" value={cab.estado} onChange={(e) => setC({ estado: e.target.value })}>
+              {ESTADOS_PEDIDO.filter((s) => ESTADOS_COMERCIAL.includes(s.value)).map((s) => (
+                <option key={s.value} value={s.value}>{s.label}</option>
+              ))}
+            </select>
+          ) : (
+            // Ya facturado/cobrado/cancelado: solo lectura para el comercial.
+            <span className="t-body">{labelDe(ESTADOS_PEDIDO, cab.estado)}</span>
+          )}
         </label>
         <label className="field">
           <span className="field__label">Recepción</span>
@@ -380,6 +397,7 @@ export function PedidoForm({ clientes, referencias, stock, initialCab, initialLi
         </div>
       </div>
 
+      {isAdmin && (
       <div className="stack stack-2">
         <span className="t-label">Cobro</span>
         <div className="form-grid">
@@ -431,6 +449,7 @@ export function PedidoForm({ clientes, referencias, stock, initialCab, initialLi
           </label>
         </div>
       </div>
+      )}
 
       {error && <p className="login-error">{error}</p>}
 

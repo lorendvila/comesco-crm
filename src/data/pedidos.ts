@@ -11,6 +11,8 @@ export interface PedidoResumen {
   estado: string
   canal_origen: string
   total_cop: number | null
+  numero_factura: string | null
+  fecha_vencimiento: string | null
   clientes: { nombre: string } | null
 }
 
@@ -49,16 +51,18 @@ export interface FiltroPedidos {
   desde?: string
   hasta?: string
   clienteId?: string
+  estado?: string
 }
 
 export async function listPedidos(f: FiltroPedidos = {}): Promise<PedidoResumen[]> {
   let q = supabase
     .from('pedidos')
-    .select('id, numero_pedido, fecha_pedido, estado, canal_origen, total_cop, clientes(nombre)')
-    .order('fecha_pedido', { ascending: false })
+    .select('id, numero_pedido, fecha_pedido, estado, canal_origen, total_cop, numero_factura, fecha_vencimiento, clientes(nombre)')
+    .order('numero_pedido', { ascending: false })
   if (f.desde) q = q.gte('fecha_pedido', f.desde)
   if (f.hasta) q = q.lte('fecha_pedido', f.hasta)
   if (f.clienteId) q = q.eq('cliente_id', f.clienteId)
+  if (f.estado) q = q.eq('estado', f.estado)
   const { data, error } = await q.returns<PedidoResumen[]>()
   if (error) throw error
   return data ?? []
@@ -108,6 +112,7 @@ function aplicarFiltros<T>(q: T & { gte: Function; lte: Function; eq: Function }
   if (f.desde) r = r.gte('fecha_pedido', f.desde)
   if (f.hasta) r = r.lte('fecha_pedido', f.hasta)
   if (f.clienteId) r = r.eq('cliente_id', f.clienteId)
+  if (f.estado) r = r.eq('estado', f.estado)
   return r
 }
 
