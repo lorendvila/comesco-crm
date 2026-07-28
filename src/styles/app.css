@@ -451,6 +451,38 @@ select.input {
 }
 .mono { font-family: var(--font-mono); color: var(--text-3); }
 
+/* ---- Combo / buscador con autocompletado (p. ej. cliente en pedido) ---- */
+.combo { position: relative; }
+.combo__list {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  z-index: 50;
+  max-height: 260px;
+  overflow-y: auto;
+  margin: 0;
+  padding: var(--sp-1);
+  list-style: none;
+  background: var(--bg-panel);
+  border: var(--border-width) solid var(--border);
+  border-radius: var(--r-lg);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.35);
+}
+.combo__opt {
+  padding: var(--sp-2) var(--sp-3);
+  border-radius: var(--r-md);
+  cursor: pointer;
+  color: var(--text-2);
+  font-size: var(--text-md);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.combo__opt.is-active { background: var(--bg-raised); }
+.combo__opt.is-sel { color: var(--accent); }
+.combo__empty { padding: var(--sp-2) var(--sp-3); color: var(--text-4); }
+
 /* Cabecera de columna ordenable */
 .data-table thead th.th-sort {
   cursor: pointer;

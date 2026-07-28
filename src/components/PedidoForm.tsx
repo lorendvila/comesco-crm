@@ -5,6 +5,7 @@ import { useAuth } from '../auth/AuthProvider'
 import type { ClienteResumen } from '../data/clientes'
 import type { ReferenciaResumen } from '../data/referencias'
 import { precioBaseCanal } from '../data/referencias'
+import { ClienteCombo } from './ClienteCombo'
 import type { Almacen } from '../data/almacenes'
 import type { StockMap } from '../data/inventario'
 import { getCondiciones } from '../data/condiciones'
@@ -151,8 +152,10 @@ export function PedidoForm({ clientes, referencias, almacenes, stock, esNuevo, i
   // No se pisa si el usuario ya lo eligió a mano (o si el pedido ya lo traía).
   useEffect(() => {
     if (!esNuevo || almacenTocado || almacenes.length === 0) return
+    // Normaliza (minúsculas y sin tildes) para que "Medellin" case con "Medellín".
+    const norm = (s: string) => s.toLowerCase().normalize('NFD').replace(/\p{Diacritic}/gu, '').trim()
     const ciudad = clientes.find((c) => c.id === cab.cliente_id)?.ciudad ?? null
-    const match = ciudad ? almacenes.find((a) => a.ciudad.toLowerCase() === ciudad.toLowerCase()) : undefined
+    const match = ciudad ? almacenes.find((a) => norm(a.ciudad) === norm(ciudad)) : undefined
     setCab((p) => ({ ...p, almacen_id: (match ?? almacenes[0]).id }))
   }, [cab.cliente_id, almacenes, clientes, almacenTocado, esNuevo])
 
@@ -289,15 +292,10 @@ export function PedidoForm({ clientes, referencias, almacenes, stock, esNuevo, i
   return (
     <form className="stack stack-4" onSubmit={submit}>
       <div className="form-grid">
-        <label className="field field--full">
+        <div className="field field--full">
           <span className="field__label">Cliente</span>
-          <select className="input" value={cab.cliente_id} onChange={(e) => setC({ cliente_id: e.target.value })} required>
-            <option value="">Elige un cliente…</option>
-            {clientes.map((c) => (
-              <option key={c.id} value={c.id}>{c.codigo_interno} · {c.nombre}</option>
-            ))}
-          </select>
-        </label>
+          <ClienteCombo clientes={clientes} value={cab.cliente_id} onChange={(id) => setC({ cliente_id: id })} />
+        </div>
         {clienteSel && (
           <div className="field field--full">
             <span className="field__label">Dirección de entrega</span>
