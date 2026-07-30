@@ -244,6 +244,12 @@ export function PedidoForm({ clientes, referencias, almacenes, stock, esNuevo, i
       setError('Elige un cliente.')
       return
     }
+    // En un pedido nuevo es obligatorio indicar de qué almacén sale la mercancía
+    // (es de donde se descuenta el stock).
+    if (esNuevo && !cab.almacen_id) {
+      setError('Elige el almacén del que sale la mercancía.')
+      return
+    }
     const validas = lineas.filter((l) => l.referencia_id && num(l.cantidad) > 0)
     if (validas.length === 0) {
       setError('Añade al menos una línea con referencia y cantidad.')
