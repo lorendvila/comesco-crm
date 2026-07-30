@@ -7,7 +7,8 @@ export interface ReferenciaResumen {
   formato: string
   categoria: string | null
   unidad: string
-  unidades_por_caja: number | null // para convertir cajas → unidades (stock)
+  unidades_por_caja: number | null // informativo (el pedido y el stock van en unidades)
+  es_servicio: boolean // Transporte/Otros: concepto de coste, sin stock
   iva_pct: number
   coste_almacen_cop: number | null // OJO: viene del maestro CON IVA incluido
   precio_food_service_cop: number | null
@@ -18,7 +19,7 @@ export interface ReferenciaResumen {
 export async function listReferencias(): Promise<ReferenciaResumen[]> {
   const { data, error } = await supabase
     .from('referencias')
-    .select('id, codigo_interno, nombre_producto, formato, categoria, unidad, unidades_por_caja, iva_pct, coste_almacen_cop, precio_food_service_cop, precio_retail_cop, precio_industria_cop')
+    .select('id, codigo_interno, nombre_producto, formato, categoria, unidad, unidades_por_caja, es_servicio, iva_pct, coste_almacen_cop, precio_food_service_cop, precio_retail_cop, precio_industria_cop')
     .is('deleted_at', null)
     .order('nombre_producto')
   if (error) throw error

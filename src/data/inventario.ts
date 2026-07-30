@@ -56,6 +56,7 @@ export async function listInventario(): Promise<InventarioFila[]> {
       .from('referencias')
       .select('id, codigo_interno, sku, nombre_producto, formato, categoria, coste_almacen_cop, precio_food_service_cop, precio_retail_cop, precio_industria_cop')
       .is('deleted_at', null)
+      .eq('es_servicio', false) // Transporte/Otros no tienen inventario
       .order('nombre_producto')
       .returns<ReferenciaRaw[]>(),
     supabase

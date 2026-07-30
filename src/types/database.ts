@@ -625,6 +625,7 @@ export type Database = {
           coste_almacen_cop: number | null
           created_at: string | null
           deleted_at: string | null
+          es_servicio: boolean
           formato: string
           id: string
           iva_pct: number
@@ -647,6 +648,7 @@ export type Database = {
           coste_almacen_cop?: number | null
           created_at?: string | null
           deleted_at?: string | null
+          es_servicio?: boolean
           formato: string
           id?: string
           iva_pct?: number
@@ -669,6 +671,7 @@ export type Database = {
           coste_almacen_cop?: number | null
           created_at?: string | null
           deleted_at?: string | null
+          es_servicio?: boolean
           formato?: string
           id?: string
           iva_pct?: number

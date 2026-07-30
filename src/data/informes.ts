@@ -32,6 +32,7 @@ interface LineaRaw {
     categoria: string | null
     coste_almacen_cop: number | null
     iva_pct: number | null
+    es_servicio: boolean | null
   } | null
 }
 
@@ -43,7 +44,7 @@ const ESTADOS_NO_VENTA = ['cancelado', 'anulado']
 export async function resumenProducto(): Promise<ResumenProducto> {
   const { data, error } = await supabase
     .from('pedido_lineas')
-    .select('cantidad, subtotal_cop, pedidos(estado), referencias(nombre_producto, formato, categoria, coste_almacen_cop, iva_pct)')
+    .select('cantidad, subtotal_cop, pedidos(estado), referencias(nombre_producto, formato, categoria, coste_almacen_cop, iva_pct, es_servicio)')
     .returns<LineaRaw[]>()
   if (error) throw error
 
@@ -55,6 +56,7 @@ export async function resumenProducto(): Promise<ResumenProducto> {
   for (const l of data ?? []) {
     const r = l.referencias
     if (!r) continue
+    if (r.es_servicio) continue // Transporte/Otros no son producto
     if (l.pedidos && ESTADOS_NO_VENTA.includes(l.pedidos.estado)) continue
     const cat = r.categoria ?? 'Otros'
     const iva = r.iva_pct ?? 0
@@ -157,6 +159,7 @@ interface LineaRotacionRaw {
     formato: string
     categoria: string | null
     unidad: string
+    es_servicio: boolean | null
   } | null
 }
 
@@ -190,7 +193,7 @@ export async function rotacionReferencias(ventana = 6): Promise<RotacionReferenc
   const [lineasRes, inventario] = await Promise.all([
     supabase
       .from('pedido_lineas')
-      .select('cantidad, pedidos(fecha_pedido, fecha_factura, estado), referencias(id, nombre_producto, formato, categoria, unidad)')
+      .select('cantidad, pedidos(fecha_pedido, fecha_factura, estado), referencias(id, nombre_producto, formato, categoria, unidad, es_servicio)')
       .returns<LineaRotacionRaw[]>(),
     listInventario(),
   ])
@@ -202,6 +205,7 @@ export async function rotacionReferencias(ventana = 6): Promise<RotacionReferenc
   for (const l of lineasRes.data ?? []) {
     const r = l.referencias
     if (!r) continue
+    if (r.es_servicio) continue // Transporte/Otros no son producto
     if (l.pedidos && ESTADOS_NO_VENTA.includes(l.pedidos.estado)) continue
     const base = l.pedidos?.fecha_factura ?? l.pedidos?.fecha_pedido
     if (!base) continue

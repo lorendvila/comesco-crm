@@ -59,7 +59,7 @@ export function cabeceraVacia(): CabeceraState {
   }
 }
 
-export const LINEA_VACIA: LineaState = { referencia_id: '', cantidad: '', unidad: 'cajas', precioBase: '', descuento: '' }
+export const LINEA_VACIA: LineaState = { referencia_id: '', cantidad: '', unidad: 'unidades', precioBase: '', descuento: '' }
 
 // Estados que un comercial puede fijar. Facturado/Cobrado/Cancelado son solo
 // del admin (marcar la facturación es un acto de facturación). El backend lo
@@ -229,7 +229,7 @@ export function PedidoForm({ clientes, referencias, almacenes, stock, esNuevo, i
           ? {
               ...l,
               referencia_id,
-              unidad: ref?.unidad ?? l.unidad,
+              unidad: 'unidades', // el pedido va siempre en unidades
               precioBase: base != null ? String(base) : l.precioBase,
               descuento: l.descuento || (descuentoCliente != null ? String(descuentoCliente) : ''),
             }
@@ -358,17 +358,17 @@ export function PedidoForm({ clientes, referencias, almacenes, stock, esNuevo, i
       <div className="stack stack-2">
         <span className="t-label">Líneas del pedido</span>
         <div className="linea-row t-caption" style={{ color: 'var(--text-4)' }}>
-          <span>Referencia</span><span>Cant.</span><span>Precio base (neto)</span><span>Desc. %</span>
+          <span>Referencia</span><span>Uds.</span><span>Precio unitario (neto)</span><span>Desc. %</span>
           <span style={{ textAlign: 'right' }}>Subtotal c/IVA</span><span />
         </div>
         {lineas.map((l, i) => {
           const ref = refById(l.referencia_id)
-          // Stock en unidades del almacén elegido; la línea puede ir en cajas.
-          const disp = l.referencia_id && cab.almacen_id ? (stock[l.referencia_id]?.[cab.almacen_id] ?? 0) : undefined
-          const udsPorCaja = ref?.unidad === 'cajas' ? (ref?.unidades_por_caja ?? 1) : 1
-          const pideUds = num(l.cantidad) * udsPorCaja
+          const esServicio = !!ref?.es_servicio
+          // Stock en unidades del almacén elegido (los servicios no tienen stock).
+          const disp = l.referencia_id && cab.almacen_id && !esServicio ? (stock[l.referencia_id]?.[cab.almacen_id] ?? 0) : undefined
+          const pideUds = num(l.cantidad) // el pedido va en unidades
           const c = calcLinea(l, ref)
-          const sinTarifa = !!l.referencia_id && l.precioBase === ''
+          const sinTarifa = !!l.referencia_id && !esServicio && l.precioBase === ''
           return (
             <div key={i} className="linea-wrap">
               <div className="linea-row">
@@ -382,11 +382,11 @@ export function PedidoForm({ clientes, referencias, almacenes, stock, esNuevo, i
                   </select>
                 </label>
                 <label className="linea-cell">
-                  <span className="linea-cell__lbl">Cantidad</span>
-                  <input className="input" type="number" min="0" step="any" placeholder="Cant." value={l.cantidad} onChange={(e) => setLinea(i, { cantidad: e.target.value })} />
+                  <span className="linea-cell__lbl">Unidades</span>
+                  <input className="input" type="number" min="0" step="any" placeholder="Uds." value={l.cantidad} onChange={(e) => setLinea(i, { cantidad: e.target.value })} />
                 </label>
                 <label className="linea-cell">
-                  <span className="linea-cell__lbl">Precio base (neto)</span>
+                  <span className="linea-cell__lbl">Precio unitario (neto)</span>
                   <input className="input" type="number" min="0" step="any" placeholder="Neto" value={l.precioBase} onChange={(e) => setLinea(i, { precioBase: e.target.value })} />
                 </label>
                 <label className="linea-cell">
