@@ -451,6 +451,96 @@ select.input {
 }
 .mono { font-family: var(--font-mono); color: var(--text-3); }
 
+/* ---- Asistente de IA (chat flotante) ---- */
+.ia-fab {
+  position: fixed;
+  right: var(--sp-5);
+  bottom: var(--sp-5);
+  z-index: 200;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  border: none;
+  background: var(--accent);
+  color: var(--ld-blue-900, #16202c);
+  font-size: 24px;
+  cursor: pointer;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  transition: transform var(--ease-fast), background var(--ease-fast);
+}
+.ia-fab:hover { transform: translateY(-2px); background: var(--accent-hover); }
+
+.ia-panel {
+  position: fixed;
+  right: var(--sp-5);
+  bottom: calc(var(--sp-5) + 68px);
+  z-index: 200;
+  width: 380px;
+  max-width: calc(100vw - var(--sp-4) * 2);
+  height: 560px;
+  max-height: calc(100vh - 120px);
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-raised);
+  border: var(--border-width) solid var(--border);
+  border-radius: var(--r-lg);
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.45);
+  overflow: hidden;
+}
+.ia-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--sp-3) var(--sp-4);
+  background: var(--bg-panel);
+  border-bottom: var(--border-width) solid var(--border);
+}
+.ia-header__title { font-family: var(--font-display); font-size: var(--text-md); color: var(--text-1); }
+.ia-header__close { background: none; border: none; color: var(--text-3); cursor: pointer; font-size: var(--text-md); }
+.ia-header__close:hover { color: var(--text-1); }
+
+.ia-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--sp-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+.ia-msg {
+  max-width: 88%;
+  padding: var(--sp-2) var(--sp-3);
+  border-radius: var(--r-md);
+  font-size: var(--text-sm);
+  line-height: 1.45;
+  white-space: normal;
+}
+.ia-msg p { margin: 0; }
+.ia-msg p + p { margin-top: var(--sp-1); }
+.ia-msg--assistant { align-self: flex-start; background: var(--bg-panel); color: var(--text-2); border-bottom-left-radius: var(--r-sm); }
+.ia-msg--user { align-self: flex-end; background: var(--accent); color: var(--ld-blue-900, #16202c); border-bottom-right-radius: var(--r-sm); }
+.ia-msg--cargando { color: var(--text-4); font-style: italic; }
+
+.ia-input {
+  display: flex;
+  gap: var(--sp-2);
+  padding: var(--sp-3);
+  border-top: var(--border-width) solid var(--border);
+}
+.ia-input .input { flex: 1; }
+.ia-nota {
+  padding: 0 var(--sp-3) var(--sp-2);
+  margin: 0;
+  font-size: var(--text-xs, 11px);
+  color: var(--text-4);
+  text-align: center;
+}
+
+@media (max-width: 640px) {
+  .ia-panel { right: var(--sp-3); left: var(--sp-3); width: auto; bottom: calc(var(--sp-3) + 68px); }
+  .ia-fab { right: var(--sp-3); bottom: var(--sp-3); }
+}
+
 /* ---- Combo / buscador con autocompletado (p. ej. cliente en pedido) ---- */
 .combo { position: relative; }
 .combo__list {

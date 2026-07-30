@@ -2,6 +2,7 @@ import { Outlet } from 'react-router-dom'
 import { useState } from 'react'
 import { Sidebar } from './Sidebar'
 import { Topbar } from './Topbar'
+import { AsistenteIA } from '../components/AsistenteIA'
 
 export function AppShell() {
   // En móvil la barra lateral es un cajón deslizante; en escritorio está siempre fija.
@@ -16,6 +17,7 @@ export function AppShell() {
           <Outlet />
         </main>
       </div>
+      <AsistenteIA />
     </div>
   )
 }
