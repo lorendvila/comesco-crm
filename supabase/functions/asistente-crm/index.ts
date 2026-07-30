@@ -15,7 +15,10 @@ function json(obj: unknown): Response {
   return new Response(JSON.stringify(obj), { headers: { ...cors, 'Content-Type': 'application/json' } })
 }
 
-const MODELO = 'claude-opus-4-8'
+// Haiku 4.5: asistente de guía (buscar/explicar sobre el manual, no analizar).
+// Rápido y ~5x más barato que Opus. Si algún día necesita más profundidad,
+// cambiar a 'claude-opus-4-8'.
+const MODELO = 'claude-haiku-4-5'
 
 // ---- Manual del CRM (conocimiento del asistente) ----
 const MANUAL = `Eres el asistente de ayuda del CRM de COMESCO (importadora y comercializadora de productos gourmet en Colombia: aceite de oliva, vinagres, aceitunas, vino, etc.). Tu única función es GUIAR a los usuarios sobre cómo usar el CRM y resolver dudas de uso. Respondes en español, de forma clara, cercana y concreta, con pasos numerados cuando aporte. No inventes funciones que no existan; si algo no está en el CRM o no lo sabes, dilo con honestidad y sugiere a quién preguntar (normalmente a la administradora, Diana).
