@@ -96,6 +96,7 @@ export type Database = {
           created_at: string | null
           deleted_at: string | null
           direccion_entrega: string | null
+          email_facturacion: string | null
           estado: string
           id: string
           nit: string | null
@@ -114,6 +115,7 @@ export type Database = {
           created_at?: string | null
           deleted_at?: string | null
           direccion_entrega?: string | null
+          email_facturacion?: string | null
           estado?: string
           id?: string
           nit?: string | null
@@ -132,6 +134,7 @@ export type Database = {
           created_at?: string | null
           deleted_at?: string | null
           direccion_entrega?: string | null
+          email_facturacion?: string | null
           estado?: string
           id?: string
           nit?: string | null

@@ -9,6 +9,7 @@ export interface ClienteFormValues {
   nombre: string
   razon_social: string
   nit: string
+  email_facturacion: string
   canal: string
   estado: string
   ciudad: string
@@ -22,6 +23,7 @@ export const VALORES_VACIOS: ClienteFormValues = {
   nombre: '',
   razon_social: '',
   nit: '',
+  email_facturacion: '',
   canal: '',
   estado: 'lead',
   ciudad: '',
@@ -36,6 +38,7 @@ export function clienteToValues(c: Cliente): ClienteFormValues {
     nombre: c.nombre,
     razon_social: c.razon_social ?? '',
     nit: c.nit ?? '',
+    email_facturacion: c.email_facturacion ?? '',
     canal: c.canal ?? '',
     estado: c.estado,
     ciudad: c.ciudad ?? '',
@@ -51,6 +54,7 @@ export function valuesToPayload(v: ClienteFormValues): TablesInsert<'clientes'> 
     nombre: v.nombre.trim(),
     razon_social: v.razon_social.trim() || null,
     nit: v.nit.trim() || null,
+    email_facturacion: v.email_facturacion.trim() || null,
     canal: v.canal || null,
     estado: v.estado,
     ciudad: v.ciudad.trim() || null,
@@ -83,6 +87,15 @@ export function ClienteForm({ initial, isAdmin, usuarios, submitLabel, onSubmit,
       setError('El nombre es obligatorio.')
       return
     }
+    const email = v.email_facturacion.trim()
+    if (!email) {
+      setError('El email de facturación electrónica es obligatorio.')
+      return
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setError('El email de facturación no tiene un formato válido.')
+      return
+    }
     setError(null)
     setSaving(true)
     try {
@@ -109,6 +122,18 @@ export function ClienteForm({ initial, isAdmin, usuarios, submitLabel, onSubmit,
       <label className="field field--full">
         <span className="field__label">NIT (facturación / cobranza)</span>
         <input className="input" value={v.nit} onChange={(e) => set({ nit: e.target.value })} />
+      </label>
+
+      <label className="field field--full">
+        <span className="field__label">Email de facturación electrónica *</span>
+        <input
+          className="input"
+          type="email"
+          placeholder="facturas@cliente.com"
+          value={v.email_facturacion}
+          onChange={(e) => set({ email_facturacion: e.target.value })}
+          required
+        />
       </label>
 
       <label className="field">
