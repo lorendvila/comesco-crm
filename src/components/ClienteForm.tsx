@@ -88,11 +88,7 @@ export function ClienteForm({ initial, isAdmin, usuarios, submitLabel, onSubmit,
       return
     }
     const email = v.email_facturacion.trim()
-    if (!email) {
-      setError('El email de facturación electrónica es obligatorio.')
-      return
-    }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       setError('El email de facturación no tiene un formato válido.')
       return
     }
@@ -125,14 +121,13 @@ export function ClienteForm({ initial, isAdmin, usuarios, submitLabel, onSubmit,
       </label>
 
       <label className="field field--full">
-        <span className="field__label">Email de facturación electrónica *</span>
+        <span className="field__label">Email de facturación electrónica (importante para facturar)</span>
         <input
           className="input"
           type="email"
           placeholder="facturas@cliente.com"
           value={v.email_facturacion}
           onChange={(e) => set({ email_facturacion: e.target.value })}
-          required
         />
       </label>
 
