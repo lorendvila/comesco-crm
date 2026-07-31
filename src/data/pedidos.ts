@@ -13,6 +13,8 @@ export interface PedidoResumen {
   total_cop: number | null
   numero_factura: string | null
   fecha_vencimiento: string | null
+  valor_factura: number | null
+  pagado: number | null
   clientes: { nombre: string } | null
 }
 
@@ -57,7 +59,7 @@ export interface FiltroPedidos {
 export async function listPedidos(f: FiltroPedidos = {}): Promise<PedidoResumen[]> {
   let q = supabase
     .from('pedidos')
-    .select('id, numero_pedido, fecha_pedido, estado, canal_origen, total_cop, numero_factura, fecha_vencimiento, clientes(nombre)')
+    .select('id, numero_pedido, fecha_pedido, estado, canal_origen, total_cop, numero_factura, fecha_vencimiento, valor_factura, pagado, clientes(nombre)')
     .order('numero_pedido', { ascending: false })
   if (f.desde) q = q.gte('fecha_pedido', f.desde)
   if (f.hasta) q = q.lte('fecha_pedido', f.hasta)

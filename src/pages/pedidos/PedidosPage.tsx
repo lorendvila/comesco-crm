@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { CANALES_ORIGEN, ESTADOS_PEDIDO, formatCOP, formatFecha, labelDe, colorEstadoPedido } from '../../data/constants'
+import { CANALES_ORIGEN, ESTADOS_PEDIDO, formatCOP, formatCOPcorto, formatFecha, labelDe, colorEstadoPedido, COLOR_AMBAR, COLOR_VERDE } from '../../data/constants'
 import { Badge } from '../../components/Badge'
 import { listClientes } from '../../data/clientes'
 import type { ClienteResumen } from '../../data/clientes'
@@ -69,6 +69,22 @@ function toLineas(p: PedidoConLineas, referencias: ReferenciaResumen[]): LineaSt
 
 const hoyISO = () => new Date().toISOString().slice(0, 10)
 
+// --- Cartera (cobranza) ---
+// Un pedido cuenta en cartera si tiene factura y saldo pendiente, y no está
+// cancelado ni anulado. Misma lógica que el Dashboard, para que los totales
+// cuadren entre pantallas.
+const esActivoCobranza = (p: PedidoResumen) => p.estado !== 'cancelado' && p.estado !== 'anulado'
+// Saldo pendiente = valor factura − pagado (0 si no hay factura o ya está cobrado).
+const saldoDe = (p: PedidoResumen) =>
+  p.valor_factura == null ? 0 : Math.max(0, p.valor_factura - (p.pagado ?? 0))
+const enCartera = (p: PedidoResumen) => esActivoCobranza(p) && saldoDe(p) > 0
+const estaVencido = (p: PedidoResumen, hoy: string) =>
+  enCartera(p) && p.fecha_vencimiento != null && p.fecha_vencimiento < hoy
+
+// Filtro derivado (se aplica en cliente porque el saldo/vencimiento no es una
+// columna simple): todos · en cartera (con saldo) · vencidos.
+type CarteraFiltro = '' | 'pendiente' | 'vencido'
+
 // Columnas por las que se puede ordenar la lista, con su valor de comparación.
 type SortCol = 'numero_pedido' | 'fecha_pedido' | 'cliente' | 'estado' | 'total_cop' | 'numero_factura' | 'fecha_vencimiento'
 type SortDir = 'asc' | 'desc'
@@ -108,10 +124,31 @@ export function PedidosPage() {
   const [modal, setModal] = useState<Modal>(null)
   const [nextNum, setNextNum] = useState<string>('')
   const [filtro, setFiltro] = useState<FiltroPedidos>({})
+  const [cartera, setCartera] = useState<CarteraFiltro>('')
   const [sortCol, setSortCol] = useState<SortCol>('numero_pedido')
   const [sortDir, setSortDir] = useState<SortDir>('desc')
 
+  const hoy = hoyISO()
+
+  // Totales de cartera sobre el conjunto ya filtrado (fechas/cliente/estado),
+  // sin que el toggle de vista los afecte: son los importes reales de cobranza.
+  const carteraTotal = useMemo(
+    () => pedidos.reduce((s, p) => s + (esActivoCobranza(p) ? saldoDe(p) : 0), 0),
+    [pedidos],
+  )
+  const carteraVencida = useMemo(
+    () => pedidos.reduce((s, p) => s + (estaVencido(p, hoy) ? saldoDe(p) : 0), 0),
+    [pedidos, hoy],
+  )
+
   const pedidosOrdenados = useMemo(() => ordenar(pedidos, sortCol, sortDir), [pedidos, sortCol, sortDir])
+
+  // Vista de la tabla: aplica el toggle de cartera al listado ya ordenado.
+  const pedidosVisibles = useMemo(() => {
+    if (cartera === 'pendiente') return pedidosOrdenados.filter(enCartera)
+    if (cartera === 'vencido') return pedidosOrdenados.filter((p) => estaVencido(p, hoy))
+    return pedidosOrdenados
+  }, [pedidosOrdenados, cartera, hoy])
 
   // Clic en cabecera: si es la columna activa alterna sentido; si no, la
   // selecciona (ascendente por defecto, salvo Nº pedido que empieza en desc).
@@ -209,6 +246,29 @@ export function PedidosPage() {
         <button className="btn btn-primary" onClick={abrirNuevo}>Nuevo pedido</button>
       </div>
 
+      <div className="grid-auto">
+        <button
+          type="button"
+          className={'card-metric card-metric--btn' + (cartera === 'pendiente' ? ' card-metric--active' : '')}
+          onClick={() => setCartera((c) => (c === 'pendiente' ? '' : 'pendiente'))}
+          title="Facturas con saldo pendiente (sin cancelar/anular). Clic para ver solo esas."
+        >
+          <p className="card-metric__label">Cartera total (pendiente)</p>
+          <p className="card-metric__value" style={{ color: COLOR_AMBAR }}>{formatCOPcorto(carteraTotal)}</p>
+        </button>
+        <button
+          type="button"
+          className={'card-metric card-metric--btn' + (cartera === 'vencido' ? ' card-metric--active' : '')}
+          onClick={() => setCartera((c) => (c === 'vencido' ? '' : 'vencido'))}
+          title="Saldo de facturas cuyo vencimiento ya pasó. Clic para ver solo esas."
+        >
+          <p className="card-metric__label">Cartera vencida</p>
+          <p className="card-metric__value" style={{ color: carteraVencida > 0 ? COLOR_AMBAR : COLOR_VERDE }}>
+            {formatCOPcorto(carteraVencida)}
+          </p>
+        </button>
+      </div>
+
       <div className="card stack stack-3">
         <div className="cluster cluster-3" style={{ alignItems: 'flex-end' }}>
           <label className="field">
@@ -233,7 +293,15 @@ export function PedidosPage() {
               {ESTADOS_PEDIDO.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
             </select>
           </label>
-          <button className="btn btn-sm btn-outline" onClick={() => setFiltro({})}>Limpiar</button>
+          <label className="field" style={{ minWidth: 180 }}>
+            <span className="field__label">Cartera</span>
+            <select className="input" value={cartera} onChange={(e) => setCartera(e.target.value as CarteraFiltro)}>
+              <option value="">Todos los pedidos</option>
+              <option value="pendiente">En cartera (con saldo)</option>
+              <option value="vencido">Solo vencidos</option>
+            </select>
+          </label>
+          <button className="btn btn-sm btn-outline" onClick={() => { setFiltro({}); setCartera('') }}>Limpiar</button>
         </div>
         <div className="cluster cluster-2">
           <button className="btn btn-outline btn-sm" onClick={exportarPedidos}>Exportar pedidos (CSV)</button>
@@ -256,12 +324,16 @@ export function PedidosPage() {
                 <th className="th-sort" onClick={() => ordenarPor('estado')}>Estado{flecha('estado')}</th>
                 <th className="th-sort" onClick={() => ordenarPor('numero_factura')}>Nº factura{flecha('numero_factura')}</th>
                 <th className="th-sort" onClick={() => ordenarPor('fecha_vencimiento')}>Vencimiento{flecha('fecha_vencimiento')}</th>
+                <th>Saldo</th>
                 <th className="th-sort" onClick={() => ordenarPor('total_cop')}>Total{flecha('total_cop')}</th>
                 <th></th>
               </tr>
             </thead>
             <tbody>
-              {pedidosOrdenados.map((p) => (
+              {pedidosVisibles.map((p) => {
+                const saldo = saldoDe(p)
+                const vencido = estaVencido(p, hoy)
+                return (
                 <tr key={p.id} onClick={() => abrirEdicion(p.id)}>
                   <td>{p.numero_pedido ?? '—'}</td>
                   <td>{formatFecha(p.fecha_pedido)}</td>
@@ -269,13 +341,19 @@ export function PedidosPage() {
                   <td>{labelDe(CANALES_ORIGEN, p.canal_origen)}</td>
                   <td><Badge color={colorEstadoPedido(p.estado)}>{labelDe(ESTADOS_PEDIDO, p.estado)}</Badge></td>
                   <td>{p.numero_factura ?? '—'}</td>
-                  <td>{formatFecha(p.fecha_vencimiento)}</td>
+                  <td style={vencido ? { color: COLOR_AMBAR, fontWeight: 600 } : undefined}>
+                    {formatFecha(p.fecha_vencimiento)}{vencido ? ' · vencido' : ''}
+                  </td>
+                  <td style={saldo > 0 ? { color: COLOR_AMBAR, fontWeight: 600 } : undefined}>
+                    {p.valor_factura == null ? '—' : formatCOP(saldo)}
+                  </td>
                   <td>{formatCOP(p.total_cop)}</td>
                   <td><button className="btn btn-sm btn-outline" onClick={(e) => { e.stopPropagation(); abrirEdicion(p.id) }}>Ver</button></td>
                 </tr>
-              ))}
-              {pedidosOrdenados.length === 0 && (
-                <tr><td colSpan={9} className="t-body-sm">No hay pedidos con estos filtros.</td></tr>
+                )
+              })}
+              {pedidosVisibles.length === 0 && (
+                <tr><td colSpan={10} className="t-body-sm">No hay pedidos con estos filtros.</td></tr>
               )}
             </tbody>
           </table>
