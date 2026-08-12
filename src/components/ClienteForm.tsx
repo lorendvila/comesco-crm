@@ -67,14 +67,14 @@ export function valuesToPayload(v: ClienteFormValues): TablesInsert<'clientes'> 
 
 interface Props {
   initial: ClienteFormValues
-  isAdmin: boolean
+  puedeAsignarComercial: boolean
   usuarios: UsuarioResumen[]
   submitLabel: string
   onSubmit: (values: ClienteFormValues) => Promise<void>
   onCancel: () => void
 }
 
-export function ClienteForm({ initial, isAdmin, usuarios, submitLabel, onSubmit, onCancel }: Props) {
+export function ClienteForm({ initial, puedeAsignarComercial, usuarios, submitLabel, onSubmit, onCancel }: Props) {
   const [v, setV] = useState<ClienteFormValues>(initial)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -160,7 +160,7 @@ export function ClienteForm({ initial, isAdmin, usuarios, submitLabel, onSubmit,
         <input className="input" value={v.pais} onChange={(e) => set({ pais: e.target.value })} />
       </label>
 
-      {isAdmin && (
+      {puedeAsignarComercial && (
         <label className="field field--full">
           <span className="field__label">Comercial asignado</span>
           <select

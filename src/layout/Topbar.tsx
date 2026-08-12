@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useAuth } from '../auth/AuthProvider'
+import { ROL_LABEL } from '../auth/permisos'
 import { cambiarMiPassword } from '../data/usuarios'
 
 export function Topbar({ onMenu }: { onMenu?: () => void }) {
@@ -15,7 +16,7 @@ export function Topbar({ onMenu }: { onMenu?: () => void }) {
       <div className="cluster cluster-3">
         <div className="topbar__user">
           <span className="topbar__name">{name}</span>
-          {role && <span className="badge">{role}</span>}
+          {role && <span className="badge">{ROL_LABEL[role] ?? role}</span>}
         </div>
         <button className="btn btn-outline btn-sm" onClick={() => setModal(true)}>
           Cambiar contraseña

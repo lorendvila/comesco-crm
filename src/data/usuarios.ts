@@ -1,10 +1,11 @@
 import { supabase } from '../lib/supabase'
+import type { Role } from '../auth/permisos'
 
 export interface Usuario {
   id: string
   full_name: string
   email: string
-  role: 'admin' | 'comercial'
+  role: Role
   is_active: boolean
   created_at: string
 }

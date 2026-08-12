@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { FormEvent } from 'react'
 import { useAuth } from '../../auth/AuthProvider'
+import { permisos } from '../../auth/permisos'
 import { listInventario, upsertInventario, updateCosteReferencia, updateTarifasReferencia } from '../../data/inventario'
 import type { InventarioFila } from '../../data/inventario'
 import { formatCOP, formatFechaHora, colorFamilia, costeConComision } from '../../data/constants'
@@ -28,7 +29,9 @@ const num = (s: string) => {
 
 export function InventarioPage() {
   const { profile } = useAuth()
-  const isAdmin = profile?.role === 'admin'
+  // El modal edita stock (inventario) + coste/tarifas (referencias): requiere
+  // operar cualquiera de las dos áreas. (La protección del coste llega en Fase 3.)
+  const puedeEditar = permisos.manageInventario(profile) || permisos.manageReferencias(profile)
   const [filas, setFilas] = useState<InventarioFila[]>([])
   const [ciudad, setCiudad] = useState<string>('') // '' = todas
   const [loading, setLoading] = useState(true)
@@ -166,7 +169,7 @@ export function InventarioPage() {
                 <th>Ubicación</th>
                 <th>Contenedor</th>
                 <th>Actualizado</th>
-                {isAdmin && <th></th>}
+                {puedeEditar && <th></th>}
               </tr>
             </thead>
             <tbody>
@@ -186,7 +189,7 @@ export function InventarioPage() {
                   <td>{f.ubicacion ?? '—'}</td>
                   <td>{f.contenedor ?? '—'}</td>
                   <td>{f.actualizado_at ? formatFechaHora(f.actualizado_at) : '—'}</td>
-                  {isAdmin && (
+                  {puedeEditar && (
                     <td><button className="btn btn-sm btn-outline" onClick={() => abrir(f)}>Editar</button></td>
                   )}
                 </tr>

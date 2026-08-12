@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useAuth } from '../../auth/AuthProvider'
+import { permisos } from '../../auth/permisos'
 import { listClientes } from '../../data/clientes'
 import { listOportunidades } from '../../data/oportunidades'
 import { listPedidosExport } from '../../data/pedidos'
@@ -138,7 +139,7 @@ export function DashboardPage() {
       <div>
         <h1 className="t-display">Dashboard</h1>
         <p className="t-body-sm">
-          {profile?.role === 'admin' ? 'Visión global del negocio.' : 'Resumen de tus clientes.'}{' '}
+          {permisos.readAll(profile) ? 'Visión global del negocio.' : 'Resumen de tus clientes.'}{' '}
           Aviso: parte de los datos aún son de prueba.
         </p>
       </div>

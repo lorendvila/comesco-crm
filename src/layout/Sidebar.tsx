@@ -1,5 +1,6 @@
 import { NavLink } from 'react-router-dom'
 import { useAuth } from '../auth/AuthProvider'
+import { permisos } from '../auth/permisos'
 
 type NavEntry =
   | { type: 'link'; to: string; label: string; end?: boolean; adminOnly?: boolean }
@@ -35,8 +36,8 @@ const itemClass = ({ isActive }: { isActive: boolean }) =>
 
 export function Sidebar({ open = false, onNavigate }: { open?: boolean; onNavigate?: () => void }) {
   const { profile } = useAuth()
-  const isAdmin = profile?.role === 'admin'
-  const nav = NAV.filter((e) => e.type !== 'link' || !e.adminOnly || isAdmin)
+  // `adminOnly` = requiere gestión de usuarios (Usuarios). Superadmin/backoffice.
+  const nav = NAV.filter((e) => e.type !== 'link' || !e.adminOnly || permisos.manageUsers(profile))
   return (
     <aside className={'sidebar' + (open ? ' sidebar--open' : '')}>
       <div className="sidebar__brand">

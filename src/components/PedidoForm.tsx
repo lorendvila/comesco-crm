@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import type { FormEvent } from 'react'
 import { CANALES_ORIGEN, ESTADOS_PEDIDO, formatCOP, costeRealNeto, pacPorCanal, labelDe } from '../data/constants'
 import { useAuth } from '../auth/AuthProvider'
+import { permisos } from '../auth/permisos'
 import type { ClienteResumen } from '../data/clientes'
 import type { ReferenciaResumen } from '../data/referencias'
 import { precioBaseCanal } from '../data/referencias'
@@ -111,7 +112,12 @@ export function PedidoForm({ clientes, referencias, almacenes, stock, esNuevo, i
   const [cab, setCab] = useState<CabeceraState>(initialCab)
   const [lineas, setLineas] = useState<LineaState[]>(initialLineas.length ? initialLineas : [{ ...LINEA_VACIA }])
   const { profile } = useAuth()
-  const isAdmin = profile?.role === 'admin' // el margen solo lo ve el admin
+  // El isAdmin único se divide en dos capacidades distintas:
+  //  - ver costes/margen  -> seeCosts (dirección SÍ, comercial NO)
+  //  - operar facturación/cobros y estados de factura -> manageFacturacion
+  //    (dirección NO, backoffice/superadmin SÍ, comercial NO)
+  const puedeVerCostes = permisos.seeCosts(profile)
+  const puedeFacturar = permisos.manageFacturacion(profile)
   const [plazo, setPlazo] = useState<number | null>(null)
   const [descuentoCliente, setDescuentoCliente] = useState<number | null>(null)
   const [saving, setSaving] = useState(false)
@@ -320,7 +326,7 @@ export function PedidoForm({ clientes, referencias, almacenes, stock, esNuevo, i
         </label>
         <label className="field">
           <span className="field__label">Estado</span>
-          {isAdmin ? (
+          {puedeFacturar ? (
             <select className="input" value={cab.estado} onChange={(e) => setC({ estado: e.target.value })}>
               {ESTADOS_PEDIDO.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
             </select>
@@ -404,7 +410,7 @@ export function PedidoForm({ clientes, referencias, almacenes, stock, esNuevo, i
               </div>
               <span className="t-caption linea-stock">
                 {l.precioBase !== '' && <>Neto ud: {formatCOP(c.netoUd)} · con IVA: {formatCOP(c.conIvaUd)} · </>}
-                {isAdmin && c.margenPct != null && (
+                {puedeVerCostes && c.margenPct != null && (
                   <span className={c.margenPct < 0 ? 'stock-bajo' : 'margen-ok'}>Margen: {Math.round(c.margenPct * 100)}% · </span>
                 )}
                 {sinTarifa && <span className="stock-bajo">Sin tarifa para este canal — pon el precio a mano · </span>}
@@ -423,9 +429,9 @@ export function PedidoForm({ clientes, referencias, almacenes, stock, esNuevo, i
         <div className="stack stack-1" style={{ alignItems: 'flex-end' }}>
           <span className="t-caption">Base imponible (est.): {formatCOP(desglose.base)}</span>
           <span className="t-caption">IVA (est.): {formatCOP(desglose.iva)}</span>
-          {isAdmin && margen && (
+          {puedeVerCostes && margen && (
             <span className={'t-caption margen-linea' + (margen.valor < 0 ? ' stock-bajo' : '')}>
-              🔒 Margen del pedido: {margen.pct == null ? '—' : `${Math.round(margen.pct * 100)}%`} ({formatCOP(margen.valor)}) · solo admin
+              🔒 Margen del pedido: {margen.pct == null ? '—' : `${Math.round(margen.pct * 100)}%`} ({formatCOP(margen.valor)})
             </span>
           )}
           <div className="cluster cluster-2">
@@ -435,7 +441,7 @@ export function PedidoForm({ clientes, referencias, almacenes, stock, esNuevo, i
         </div>
       </div>
 
-      {isAdmin && (
+      {puedeFacturar && (
       <div className="stack stack-2">
         <span className="t-label">Cobro</span>
         <div className="form-grid">

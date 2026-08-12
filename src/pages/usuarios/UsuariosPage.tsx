@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Navigate } from 'react-router-dom'
 import { useAuth } from '../../auth/AuthProvider'
+import { permisos, ROL_LABEL } from '../../auth/permisos'
 import {
   listUsuariosAdmin,
   crearUsuario,
@@ -16,8 +17,6 @@ type Modal =
   | { mode: 'reset'; user: Usuario }
   | null
 
-const ROL_LABEL: Record<string, string> = { admin: 'Administrador', comercial: 'Comercial' }
-
 export function UsuariosPage() {
   const { profile } = useAuth()
   const [usuarios, setUsuarios] = useState<Usuario[] | null>(null)
@@ -32,8 +31,8 @@ export function UsuariosPage() {
   }
   useEffect(cargar, [])
 
-  // Solo el admin gestiona usuarios.
-  if (profile && profile.role !== 'admin') return <Navigate to="/" replace />
+  // Gestión de usuarios: superadmin/backoffice (capacidad manageUsers).
+  if (profile && !permisos.manageUsers(profile)) return <Navigate to="/" replace />
 
   const toggleActivo = async (u: Usuario) => {
     setBusy(u.id)

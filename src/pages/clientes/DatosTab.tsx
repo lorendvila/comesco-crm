@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useAuth } from '../../auth/AuthProvider'
+import { permisos } from '../../auth/permisos'
 import { updateCliente } from '../../data/clientes'
 import type { Cliente } from '../../data/clientes'
 import { listUsuarios } from '../../data/users'
@@ -27,13 +28,13 @@ function Dato({ label, value }: { label: string; value: string | null }) {
 
 export function DatosTab({ cliente, onSaved }: Props) {
   const { profile } = useAuth()
-  const isAdmin = profile?.role === 'admin'
+  const puedeGestionar = permisos.manageClientes(profile)
   const [editando, setEditando] = useState(false)
   const [usuarios, setUsuarios] = useState<UsuarioResumen[]>([])
 
   useEffect(() => {
-    if (isAdmin) listUsuarios().then(setUsuarios).catch(() => {})
-  }, [isAdmin])
+    if (puedeGestionar) listUsuarios().then(setUsuarios).catch(() => {})
+  }, [puedeGestionar])
 
   const comercial = usuarios.find((u) => u.id === cliente.comercial_asignado_id)
 
@@ -42,7 +43,7 @@ export function DatosTab({ cliente, onSaved }: Props) {
       <div className="card" style={{ maxWidth: 720 }}>
         <ClienteForm
           initial={clienteToValues(cliente)}
-          isAdmin={isAdmin}
+          puedeAsignarComercial={puedeGestionar}
           usuarios={usuarios}
           submitLabel="Guardar cambios"
           onCancel={() => setEditando(false)}

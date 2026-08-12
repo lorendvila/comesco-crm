@@ -2,12 +2,13 @@ import { createContext, useContext, useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import type { Session } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
+import type { Role } from './permisos'
 
 export interface Profile {
   id: string
   full_name: string
   email: string
-  role: 'admin' | 'comercial'
+  role: Role
   is_active: boolean
 }
 
