@@ -32,6 +32,7 @@ export function InventarioPage() {
   // El modal edita stock (inventario) + coste/tarifas (referencias): requiere
   // operar cualquiera de las dos áreas. (La protección del coste llega en Fase 3.)
   const puedeEditar = permisos.manageInventario(profile) || permisos.manageReferencias(profile)
+  const puedeVerCostes = permisos.seeCosts(profile) // coste/valor de stock: no para comercial
   const [filas, setFilas] = useState<InventarioFila[]>([])
   const [ciudad, setCiudad] = useState<string>('') // '' = todas
   const [loading, setLoading] = useState(true)
@@ -98,9 +99,13 @@ export function InventarioPage() {
   // Exporta el inventario a CSV (una fila por producto y ciudad). Importes en
   // entero COP para que Excel los sume sin líos de separadores.
   const exportar = () => {
+    // Las columnas de coste solo salen si el rol puede verlas (no comercial).
+    const cabeceras = ['Código', 'SKU', 'Producto', 'Formato', 'Categoría', 'Ciudad', 'Disponible (uds)',
+      ...(puedeVerCostes ? ['Coste ud. COP', 'Valor total COP'] : []),
+      'Ubicación', 'Contenedor', 'Actualizado']
     downloadCSV(
       `inventario_${hoyISO()}.csv`,
-      ['Código', 'SKU', 'Producto', 'Formato', 'Categoría', 'Ciudad', 'Disponible (uds)', 'Coste ud. COP', 'Valor total COP', 'Ubicación', 'Contenedor', 'Actualizado'],
+      cabeceras,
       visibles.map((f) => {
         const costeUd = costeConComision(f.coste_almacen_cop)
         return [
@@ -111,8 +116,10 @@ export function InventarioPage() {
           f.categoria ?? '',
           f.almacen.ciudad,
           f.cantidad_disponible,
-          costeUd == null ? '' : Math.round(costeUd),
-          costeUd == null ? '' : Math.round(f.cantidad_disponible * costeUd),
+          ...(puedeVerCostes ? [
+            costeUd == null ? '' : Math.round(costeUd),
+            costeUd == null ? '' : Math.round(f.cantidad_disponible * costeUd),
+          ] : []),
           f.ubicacion ?? '',
           f.contenedor ?? '',
           f.actualizado_at ? formatFechaHora(f.actualizado_at) : '',
@@ -142,11 +149,13 @@ export function InventarioPage() {
               {ciudades.map((c) => <option key={c} value={c}>{c}</option>)}
             </select>
           </label>
-          <div className="card-metric" style={{ marginLeft: 'auto' }}>
-            <p className="card-metric__label">Valor del stock{ciudad ? ` · ${ciudad}` : ' · todas'}</p>
-            <p className="card-metric__value">{formatCOP(valorTotal)}</p>
-            <p className="card-metric__sub">Disponible × valor unitario</p>
-          </div>
+          {puedeVerCostes && (
+            <div className="card-metric" style={{ marginLeft: 'auto' }}>
+              <p className="card-metric__label">Valor del stock{ciudad ? ` · ${ciudad}` : ' · todas'}</p>
+              <p className="card-metric__value">{formatCOP(valorTotal)}</p>
+              <p className="card-metric__sub">Disponible × valor unitario</p>
+            </div>
+          )}
         </div>
       </div>
 
@@ -164,8 +173,8 @@ export function InventarioPage() {
                 <th>Formato</th>
                 <th>Ciudad</th>
                 <th>Disponible (uds)</th>
-                <th>Coste ud.</th>
-                <th>Valor</th>
+                {puedeVerCostes && <th>Coste ud.</th>}
+                {puedeVerCostes && <th>Valor</th>}
                 <th>Ubicación</th>
                 <th>Contenedor</th>
                 <th>Actualizado</th>
@@ -184,8 +193,8 @@ export function InventarioPage() {
                   <td>{f.formato}</td>
                   <td>{f.almacen.ciudad}</td>
                   <td>{f.cantidad_disponible}</td>
-                  <td>{formatCOP(costeConComision(f.coste_almacen_cop))}</td>
-                  <td>{formatCOP(f.cantidad_disponible * (costeConComision(f.coste_almacen_cop) ?? 0))}</td>
+                  {puedeVerCostes && <td>{formatCOP(costeConComision(f.coste_almacen_cop))}</td>}
+                  {puedeVerCostes && <td>{formatCOP(f.cantidad_disponible * (costeConComision(f.coste_almacen_cop) ?? 0))}</td>}
                   <td>{f.ubicacion ?? '—'}</td>
                   <td>{f.contenedor ?? '—'}</td>
                   <td>{f.actualizado_at ? formatFechaHora(f.actualizado_at) : '—'}</td>

@@ -1,6 +1,7 @@
 import { supabase } from '../lib/supabase'
 import { costeRealNeto } from './constants'
 import { listInventario } from './inventario'
+import { getCostesMap } from './referencias'
 
 export interface FamiliaUnidades {
   categoria: string
@@ -25,12 +26,12 @@ export interface ResumenProducto {
 interface LineaRaw {
   cantidad: number
   subtotal_cop: number | null
+  referencia_id: string
   pedidos: { estado: string } | null
   referencias: {
     nombre_producto: string
     formato: string
     categoria: string | null
-    coste_almacen_cop: number | null
     iva_pct: number | null
     es_servicio: boolean | null
   } | null
@@ -42,10 +43,16 @@ const ESTADOS_NO_VENTA = ['cancelado', 'anulado']
 // Agrega las líneas de pedido por familia y por referencia (RLS: el comercial
 // solo ve las de sus clientes). Calcula ingresos y coste (COGS) para el margen.
 export async function resumenProducto(): Promise<ResumenProducto> {
-  const { data, error } = await supabase
-    .from('pedido_lineas')
-    .select('cantidad, subtotal_cop, pedidos(estado), referencias(nombre_producto, formato, categoria, coste_almacen_cop, iva_pct, es_servicio)')
-    .returns<LineaRaw[]>()
+  const [linRes, costes] = await Promise.all([
+    supabase
+      .from('pedido_lineas')
+      .select('cantidad, subtotal_cop, referencia_id, pedidos(estado), referencias(nombre_producto, formato, categoria, iva_pct, es_servicio)')
+      .returns<LineaRaw[]>(),
+    // Coste PROTEGIDO. Comercial -> mapa vacío -> COGS 0 (y el margen se oculta
+    // en el Dashboard con can_see_costs; nunca se le muestra un margen falso).
+    getCostesMap(),
+  ])
+  const { data, error } = linRes
   if (error) throw error
 
   const familias = new Map<string, number>()
@@ -64,7 +71,7 @@ export async function resumenProducto(): Promise<ResumenProducto> {
     // Margen real = venta y coste AMBOS sin IVA, y contra el coste REAL: el del
     // maestro viene con IVA incluido y además hay que sumarle la comisión del 5%.
     totalRevenue += valor / (1 + iva / 100)
-    totalCogs += l.cantidad * (costeRealNeto(r.coste_almacen_cop, iva) ?? 0)
+    totalCogs += l.cantidad * (costeRealNeto(costes[l.referencia_id] ?? null, iva) ?? 0)
     familias.set(cat, (familias.get(cat) ?? 0) + l.cantidad)
     const key = `${r.nombre_producto} ${r.formato}`
     const prev = refs.get(key)

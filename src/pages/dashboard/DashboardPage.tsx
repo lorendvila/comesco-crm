@@ -95,6 +95,7 @@ const pct = (n: number) => `${Math.round(n * 100)}%`
 
 export function DashboardPage() {
   const { profile } = useAuth()
+  const verCostes = permisos.seeCosts(profile)
   const [m, setM] = useState<Metricas | null>(null)
   const [error, setError] = useState<string | null>(null)
 
@@ -155,8 +156,9 @@ export function DashboardPage() {
               <Kpi label="Facturado" value={formatCOPcorto(m.facturado)} accent={COLOR_GOLD} />
               <Kpi label="Pendiente de cobro" value={formatCOPcorto(m.pendiente)} accent={COLOR_AMBAR}
                 sub={m.vencido > 0 ? `${formatCOPcorto(m.vencido)} vencido` : 'sin vencidos'} />
-              <Kpi label="Margen bruto" value={pct(m.margenPct)} accent={m.margen >= 0 ? COLOR_VERDE : COLOR_AMBAR} sub={`${formatCOPcorto(m.margen)} · sin IVA`} />
-              <Kpi label="Valor inventario" value={formatCOPcorto(m.valorInventario)} accent={COLOR_AZUL} />
+              {/* Margen y valor de inventario dependen del coste -> solo can_see_costs */}
+              {verCostes && <Kpi label="Margen bruto" value={pct(m.margenPct)} accent={m.margen >= 0 ? COLOR_VERDE : COLOR_AMBAR} sub={`${formatCOPcorto(m.margen)} · sin IVA`} />}
+              {verCostes && <Kpi label="Valor inventario" value={formatCOPcorto(m.valorInventario)} accent={COLOR_AZUL} />}
             </div>
           </section>
 

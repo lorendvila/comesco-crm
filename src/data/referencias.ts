@@ -10,20 +10,34 @@ export interface ReferenciaResumen {
   unidades_por_caja: number | null // informativo (el pedido y el stock van en unidades)
   es_servicio: boolean // Transporte/Otros: concepto de coste, sin stock
   iva_pct: number
-  coste_almacen_cop: number | null // OJO: viene del maestro CON IVA incluido
+  coste_almacen_cop: number | null // PROTEGIDO: de referencia_costes; null si el rol no ve costes
   precio_food_service_cop: number | null
   precio_retail_cop: number | null
   precio_industria_cop: number | null
 }
 
-export async function listReferencias(): Promise<ReferenciaResumen[]> {
-  const { data, error } = await supabase
-    .from('referencias')
-    .select('id, codigo_interno, nombre_producto, formato, categoria, unidad, unidades_por_caja, es_servicio, iva_pct, coste_almacen_cop, precio_food_service_cop, precio_retail_cop, precio_industria_cop')
-    .is('deleted_at', null)
-    .order('nombre_producto')
+// Mapa { referencia_id: coste } desde la tabla PROTEGIDA referencia_costes.
+// Por RLS, un comercial recibe [] (no puede ver costes) -> mapa vacío -> los
+// consumidores obtienen coste null y no pueden reconstruir márgenes.
+export async function getCostesMap(): Promise<Record<string, number>> {
+  const { data, error } = await supabase.from('referencia_costes').select('referencia_id, coste_almacen_cop')
   if (error) throw error
-  return data ?? []
+  const map: Record<string, number> = {}
+  for (const r of data ?? []) if (r.coste_almacen_cop != null) map[r.referencia_id] = r.coste_almacen_cop
+  return map
+}
+
+export async function listReferencias(): Promise<ReferenciaResumen[]> {
+  const [refsRes, costes] = await Promise.all([
+    supabase
+      .from('referencias')
+      .select('id, codigo_interno, nombre_producto, formato, categoria, unidad, unidades_por_caja, es_servicio, iva_pct, precio_food_service_cop, precio_retail_cop, precio_industria_cop')
+      .is('deleted_at', null)
+      .order('nombre_producto'),
+    getCostesMap(),
+  ])
+  if (refsRes.error) throw refsRes.error
+  return (refsRes.data ?? []).map((r) => ({ ...r, coste_almacen_cop: costes[r.id] ?? null })) as ReferenciaResumen[]
 }
 
 // Precio base (neto) de una referencia según el canal del cliente.

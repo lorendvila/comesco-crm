@@ -628,13 +628,38 @@ export type Database = {
           },
         ]
       }
+      referencia_costes: {
+        Row: {
+          referencia_id: string
+          coste_almacen_cop: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          referencia_id: string
+          coste_almacen_cop?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          referencia_id?: string
+          coste_almacen_cop?: number | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "referencia_costes_referencia_id_fkey"
+            columns: ["referencia_id"]
+            isOneToOne: true
+            referencedRelation: "referencias"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       referencias: {
         Row: {
           cajas_por_palet: number | null
           categoria: string | null
           codigo_facturacion_externo: string | null
           codigo_interno: string
-          coste_almacen_cop: number | null
           created_at: string | null
           deleted_at: string | null
           es_servicio: boolean
@@ -657,7 +682,6 @@ export type Database = {
           categoria?: string | null
           codigo_facturacion_externo?: string | null
           codigo_interno?: string
-          coste_almacen_cop?: number | null
           created_at?: string | null
           deleted_at?: string | null
           es_servicio?: boolean
@@ -680,7 +704,6 @@ export type Database = {
           categoria?: string | null
           codigo_facturacion_externo?: string | null
           codigo_interno?: string
-          coste_almacen_cop?: number | null
           created_at?: string | null
           deleted_at?: string | null
           es_servicio?: boolean

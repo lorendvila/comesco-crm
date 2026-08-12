@@ -1,6 +1,7 @@
 import { supabase } from '../lib/supabase'
 import { listAlmacenes } from './almacenes'
 import type { Almacen } from './almacenes'
+import { getCostesMap } from './referencias'
 
 // Una fila = una referencia EN un almacén. El stock se lleva en UNIDADES.
 export interface InventarioFila {
@@ -31,7 +32,6 @@ interface ReferenciaRaw {
   nombre_producto: string
   formato: string
   categoria: string | null
-  coste_almacen_cop: number | null
   precio_food_service_cop: number | null
   precio_retail_cop: number | null
   precio_industria_cop: number | null
@@ -51,10 +51,10 @@ interface InventarioRecord {
 // Cruce referencia × almacén: una fila por cada combinación, con su stock si
 // existe (0 si no). Así se ve qué hay —y qué falta— en cada ciudad.
 export async function listInventario(): Promise<InventarioFila[]> {
-  const [refsRes, invRes, almacenes] = await Promise.all([
+  const [refsRes, invRes, almacenes, costes] = await Promise.all([
     supabase
       .from('referencias')
-      .select('id, codigo_interno, sku, nombre_producto, formato, categoria, coste_almacen_cop, precio_food_service_cop, precio_retail_cop, precio_industria_cop')
+      .select('id, codigo_interno, sku, nombre_producto, formato, categoria, precio_food_service_cop, precio_retail_cop, precio_industria_cop')
       .is('deleted_at', null)
       .eq('es_servicio', false) // Transporte/Otros no tienen inventario
       .order('nombre_producto')
@@ -64,6 +64,8 @@ export async function listInventario(): Promise<InventarioFila[]> {
       .select('id, referencia_id, almacen_id, cantidad_disponible, ubicacion, contenedor, notas, actualizado_at')
       .returns<InventarioRecord[]>(),
     listAlmacenes(),
+    // Coste PROTEGIDO (referencia_costes). Comercial -> mapa vacío -> coste null.
+    getCostesMap(),
   ])
   if (refsRes.error) throw refsRes.error
   if (invRes.error) throw invRes.error
@@ -82,7 +84,7 @@ export async function listInventario(): Promise<InventarioFila[]> {
         nombre_producto: r.nombre_producto,
         formato: r.formato,
         categoria: r.categoria,
-        coste_almacen_cop: r.coste_almacen_cop,
+        coste_almacen_cop: costes[r.id] ?? null,
         precio_food_service_cop: r.precio_food_service_cop,
         precio_retail_cop: r.precio_retail_cop,
         precio_industria_cop: r.precio_industria_cop,
@@ -129,12 +131,20 @@ export async function upsertInventario(referenciaId: string, almacenId: string, 
   if (error) throw error
 }
 
-// El coste hasta almacén es un atributo del producto (maestro). Solo admin.
+// El coste hasta almacén vive en la tabla PROTEGIDA referencia_costes (RLS:
+// escribe superadmin/backoffice). Coste null -> se borra la fila.
 export async function updateCosteReferencia(referenciaId: string, coste: number | null): Promise<void> {
+  if (coste == null) {
+    const { error } = await supabase.from('referencia_costes').delete().eq('referencia_id', referenciaId)
+    if (error) throw error
+    return
+  }
   const { error } = await supabase
-    .from('referencias')
-    .update({ coste_almacen_cop: coste })
-    .eq('id', referenciaId)
+    .from('referencia_costes')
+    .upsert(
+      { referencia_id: referenciaId, coste_almacen_cop: coste, updated_at: new Date().toISOString() },
+      { onConflict: 'referencia_id' },
+    )
   if (error) throw error
 }
 
