@@ -57,3 +57,12 @@ export const ROL_LABEL: Record<string, string> = {
   comercial: 'Comercial',
   admin: 'Administrador',
 }
+
+// Roles que se pueden asignar desde la gestión de usuarios ('admin' es legacy:
+// no se crea, solo existe durante la transición).
+export const ROLES_ASIGNABLES: Role[] = ['superadmin', 'direccion', 'backoffice', 'comercial']
+
+// Rol privilegiado = no es comercial. Backoffice no puede gestionarlos.
+export function esRolPrivilegiado(role: string): boolean {
+  return role === 'superadmin' || role === 'direccion' || role === 'backoffice' || role === 'admin'
+}

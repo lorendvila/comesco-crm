@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react'
 import { Navigate } from 'react-router-dom'
 import { useAuth } from '../../auth/AuthProvider'
-import { permisos, ROL_LABEL } from '../../auth/permisos'
+import { permisos, ROL_LABEL, ROLES_ASIGNABLES, esRolPrivilegiado } from '../../auth/permisos'
+import type { Role } from '../../auth/permisos'
 import {
   listUsuariosAdmin,
   crearUsuario,
   setUsuarioActivo,
+  setUsuarioRol,
   resetPassword,
   generarPassword,
 } from '../../data/usuarios'
@@ -19,6 +21,7 @@ type Modal =
 
 export function UsuariosPage() {
   const { profile } = useAuth()
+  const esSuper = permisos.managePrivileged(profile) // superadmin: gestiona todos + cambia roles
   const [usuarios, setUsuarios] = useState<Usuario[] | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [modal, setModal] = useState<Modal>(null)
@@ -46,12 +49,32 @@ export function UsuariosPage() {
     }
   }
 
+  const cambiarRol = async (u: Usuario, role: Role) => {
+    if (role === u.role) return
+    setBusy(u.id)
+    try {
+      await setUsuarioRol(u.id, role)
+      cargar()
+    } catch (e) {
+      alert((e as Error).message)
+    } finally {
+      setBusy(null)
+    }
+  }
+
   return (
     <div className="stack stack-6">
       <div className="page-header">
         <h1 className="t-display">Usuarios</h1>
         <button className="btn btn-primary" onClick={() => setModal({ mode: 'nuevo' })}>Nuevo usuario</button>
       </div>
+
+      {!esSuper && (
+        <p className="t-body-sm" style={{ color: 'var(--text-4)' }}>
+          Como backoffice puedes crear y gestionar usuarios <strong>comerciales</strong>. La gestión de roles
+          y de usuarios privilegiados (dirección, backoffice, superadmin) es exclusiva de superadmin.
+        </p>
+      )}
 
       {error && <p className="login-error">{error}</p>}
       {!usuarios && !error && <p className="t-body-sm">Cargando…</p>}
@@ -72,11 +95,31 @@ export function UsuariosPage() {
             <tbody>
               {usuarios.map((u) => {
                 const esYo = u.id === profile?.id
+                const privilegiado = esRolPrivilegiado(u.role)
+                // Backoffice solo gestiona comerciales; superadmin, a todos.
+                const puedeGestionar = esSuper || !privilegiado
                 return (
                   <tr key={u.id} style={{ opacity: u.is_active ? 1 : 0.55 }}>
                     <td>{u.full_name}{esYo && <span className="badge" style={{ marginLeft: 8 }}>tú</span>}</td>
                     <td>{u.email}</td>
-                    <td>{ROL_LABEL[u.role] ?? u.role}</td>
+                    <td>
+                      {esSuper && !esYo ? (
+                        <select
+                          className="input input-sm"
+                          value={u.role}
+                          disabled={busy === u.id}
+                          onChange={(e) => cambiarRol(u, e.target.value as Role)}
+                        >
+                          {/* 'admin' legacy: se muestra como actual pero no se ofrece para asignar */}
+                          {u.role === 'admin' && <option value="admin">{ROL_LABEL.admin} (legacy)</option>}
+                          {ROLES_ASIGNABLES.map((r) => (
+                            <option key={r} value={r}>{ROL_LABEL[r]}</option>
+                          ))}
+                        </select>
+                      ) : (
+                        ROL_LABEL[u.role] ?? u.role
+                      )}
+                    </td>
                     <td>
                       <span className="pill" style={{ background: u.is_active ? 'var(--color-verde, #A6B187)' : '#7C8794' }}>
                         {u.is_active ? 'Activo' : 'Inactivo'}
@@ -84,17 +127,23 @@ export function UsuariosPage() {
                     </td>
                     <td>{formatFecha(u.created_at.slice(0, 10))}</td>
                     <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
-                      <button className="btn btn-outline btn-sm" onClick={() => setModal({ mode: 'reset', user: u })}>
-                        Contraseña
-                      </button>{' '}
-                      <button
-                        className="btn btn-outline btn-sm"
-                        disabled={esYo || busy === u.id}
-                        title={esYo ? 'No puedes desactivar tu propia cuenta' : undefined}
-                        onClick={() => toggleActivo(u)}
-                      >
-                        {u.is_active ? 'Desactivar' : 'Activar'}
-                      </button>
+                      {puedeGestionar ? (
+                        <>
+                          <button className="btn btn-outline btn-sm" onClick={() => setModal({ mode: 'reset', user: u })}>
+                            Contraseña
+                          </button>{' '}
+                          <button
+                            className="btn btn-outline btn-sm"
+                            disabled={esYo || busy === u.id}
+                            title={esYo ? 'No puedes desactivar tu propia cuenta' : undefined}
+                            onClick={() => toggleActivo(u)}
+                          >
+                            {u.is_active ? 'Desactivar' : 'Activar'}
+                          </button>
+                        </>
+                      ) : (
+                        <span className="t-caption" style={{ color: 'var(--text-4)' }}>Solo superadmin</span>
+                      )}
                     </td>
                   </tr>
                 )
@@ -106,6 +155,7 @@ export function UsuariosPage() {
 
       {modal?.mode === 'nuevo' && (
         <NuevoUsuarioModal
+          esSuper={esSuper}
           onClose={() => setModal(null)}
           onCreado={() => { setModal(null); cargar() }}
         />
@@ -120,10 +170,11 @@ export function UsuariosPage() {
   )
 }
 
-function NuevoUsuarioModal({ onClose, onCreado }: { onClose: () => void; onCreado: () => void }) {
+function NuevoUsuarioModal({ esSuper, onClose, onCreado }: { esSuper: boolean; onClose: () => void; onCreado: () => void }) {
   const [fullName, setFullName] = useState('')
   const [email, setEmail] = useState('')
-  const [role, setRole] = useState<'admin' | 'comercial'>('comercial')
+  // Backoffice solo crea comerciales; superadmin, cualquier rol asignable.
+  const [role, setRole] = useState<Role>('comercial')
   const [password, setPassword] = useState(generarPassword())
   const [err, setErr] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
@@ -155,10 +206,18 @@ function NuevoUsuarioModal({ onClose, onCreado }: { onClose: () => void; onCread
           </label>
           <label className="field">
             <span className="field__label">Rol</span>
-            <select className="input" value={role} onChange={(e) => setRole(e.target.value as 'admin' | 'comercial')}>
-              <option value="comercial">Comercial</option>
-              <option value="admin">Administrador</option>
-            </select>
+            {esSuper ? (
+              <select className="input" value={role} onChange={(e) => setRole(e.target.value as Role)}>
+                {ROLES_ASIGNABLES.map((r) => (
+                  <option key={r} value={r}>{ROL_LABEL[r]}</option>
+                ))}
+              </select>
+            ) : (
+              <>
+                <input className="input" value={ROL_LABEL.comercial} disabled />
+                <span className="t-caption">Backoffice solo crea usuarios comerciales.</span>
+              </>
+            )}
           </label>
           <label className="field">
             <span className="field__label">Contraseña temporal</span>
@@ -166,7 +225,7 @@ function NuevoUsuarioModal({ onClose, onCreado }: { onClose: () => void; onCread
               <input className="input" value={password} onChange={(e) => setPassword(e.target.value)} style={{ flex: 1 }} />
               <button type="button" className="btn btn-outline btn-sm" onClick={() => setPassword(generarPassword())}>Generar</button>
             </div>
-            <span className="t-caption">Pásasela al comercial; podrá cambiarla desde su sesión.</span>
+            <span className="t-caption">Pásasela al usuario; podrá cambiarla desde su sesión.</span>
           </label>
           {err && <p className="login-error">{err}</p>}
           <div className="cluster cluster-2" style={{ justifyContent: 'flex-end', marginTop: 'var(--sp-2)' }}>

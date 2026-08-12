@@ -33,7 +33,7 @@ async function invokeAdmin(body: Record<string, unknown>): Promise<void> {
 export function crearUsuario(p: {
   full_name: string
   email: string
-  role: 'admin' | 'comercial'
+  role: Role
   password: string
 }): Promise<void> {
   return invokeAdmin({ action: 'create', ...p })
@@ -41,6 +41,11 @@ export function crearUsuario(p: {
 
 export function setUsuarioActivo(user_id: string, is_active: boolean): Promise<void> {
   return invokeAdmin({ action: 'set_active', user_id, is_active })
+}
+
+// Cambio de rol (solo superadmin; el Edge lo valida en servidor).
+export function setUsuarioRol(user_id: string, role: Role): Promise<void> {
+  return invokeAdmin({ action: 'set_role', user_id, role })
 }
 
 export function resetPassword(user_id: string, password: string): Promise<void> {
