@@ -2,25 +2,30 @@ import { useEffect, useMemo, useState } from 'react'
 import { ETAPAS, ETAPAS_ABIERTAS, formatCOP } from '../../data/constants'
 import { listClientes } from '../../data/clientes'
 import type { ClienteResumen } from '../../data/clientes'
+import { listReferencias } from '../../data/referencias'
+import type { ReferenciaResumen } from '../../data/referencias'
 import {
   listOportunidades,
+  getOportunidad,
   createOportunidad,
   updateOportunidad,
+  moverOportunidadEtapa,
   deleteOportunidad,
 } from '../../data/oportunidades'
-import type { Oportunidad, OportunidadConCliente } from '../../data/oportunidades'
+import type { OportunidadConCliente, OportunidadConLineas } from '../../data/oportunidades'
 import {
   OportunidadForm,
-  OPORTUNIDAD_VACIA,
-  oportunidadToValues,
-  valuesToOportunidadPayload,
+  CAB_OPORTUNIDAD_VACIA,
+  oportunidadToCab,
+  oportunidadToLineas,
 } from '../../components/OportunidadForm'
 
-type Modal = { mode: 'new' } | { mode: 'edit'; op: Oportunidad } | null
+type Modal = { mode: 'new' } | { mode: 'edit'; op: OportunidadConLineas } | null
 
 export function PipelinePage() {
   const [ops, setOps] = useState<OportunidadConCliente[]>([])
   const [clientes, setClientes] = useState<ClienteResumen[]>([])
+  const [referencias, setReferencias] = useState<ReferenciaResumen[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [modal, setModal] = useState<Modal>(null)
@@ -29,10 +34,11 @@ export function PipelinePage() {
 
   const cargar = () => {
     setLoading(true)
-    Promise.all([listOportunidades(), listClientes()])
-      .then(([o, c]) => {
+    Promise.all([listOportunidades(), listClientes(), listReferencias()])
+      .then(([o, c, r]) => {
         setOps(o)
         setClientes(c)
+        setReferencias(r)
       })
       .catch(() => setError('No se pudieron cargar las oportunidades.'))
       .finally(() => setLoading(false))
@@ -58,7 +64,7 @@ export function PipelinePage() {
 
   const moverEtapa = async (op: OportunidadConCliente, etapa: string) => {
     if (op.etapa === etapa) return
-    await updateOportunidad(op.id, { etapa })
+    await moverOportunidadEtapa(op.id, etapa)
     cargar()
   }
 
@@ -67,6 +73,14 @@ export function PipelinePage() {
     setDragId(null)
     setDragOver(null)
     if (op) moverEtapa(op, etapa)
+  }
+
+  const abrirEdicion = async (id: string) => {
+    try {
+      setModal({ mode: 'edit', op: await getOportunidad(id) })
+    } catch {
+      setError('No se pudo abrir la oportunidad.')
+    }
   }
 
   return (
@@ -80,17 +94,17 @@ export function PipelinePage() {
 
       <div className="summary-row">
         <div className="card-metric">
-          <p className="card-metric__label">Pipeline total</p>
+          <p className="card-metric__label">Pipeline total (mensual)</p>
           <p className="card-metric__value">{formatCOP(resumen.total)}</p>
-          <p className="card-metric__sub">Todo lo vivo (sin perdidas)</p>
+          <p className="card-metric__sub">Valor neto/mes · todo lo vivo (sin perdidas)</p>
         </div>
         <div className="card-metric">
           <p className="card-metric__label">Proyección ponderada</p>
           <p className="card-metric__value">{formatCOP(resumen.ponderado)}</p>
-          <p className="card-metric__sub">Valor × probabilidad (abiertas)</p>
+          <p className="card-metric__sub">Valor mensual × probabilidad (abiertas)</p>
         </div>
         <div className="card-metric">
-          <p className="card-metric__label">Ganado</p>
+          <p className="card-metric__label">Ganado (mensual)</p>
           <p className="card-metric__value">{formatCOP(resumen.ganado)}</p>
           <p className="card-metric__sub">Cierres ganados</p>
         </div>
@@ -136,14 +150,14 @@ export function PipelinePage() {
                     >
                       <span className="t-body">{o.clientes?.nombre ?? '—'}</span>
                       <div className="cluster cluster-2">
-                        <span className="t-sub">{formatCOP(o.valor_estimado)}</span>
+                        <span className="t-sub">{formatCOP(o.valor_estimado)}/mes</span>
                         {o.probabilidad_cierre != null && (
                           <span className="badge">{o.probabilidad_cierre}%</span>
                         )}
                       </div>
                       {o.fecha_cierre && <span className="t-caption">Cierre: {o.fecha_cierre}</span>}
                       <div className="cluster cluster-2">
-                        <button className="btn btn-sm btn-outline" onClick={() => setModal({ mode: 'edit', op: o })}>
+                        <button className="btn btn-sm btn-outline" onClick={() => abrirEdicion(o.id)}>
                           Editar
                         </button>
                       </div>
@@ -161,19 +175,21 @@ export function PipelinePage() {
 
       {modal && (
         <div className="modal-overlay" onClick={() => setModal(null)}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
+          <div className="modal modal--wide" onClick={(e) => e.stopPropagation()}>
             <h2 className="t-heading" style={{ marginBottom: 'var(--sp-4)' }}>
               {modal.mode === 'new' ? 'Nueva oportunidad' : 'Editar oportunidad'}
             </h2>
             <OportunidadForm
               clientes={clientes}
-              initial={modal.mode === 'new' ? OPORTUNIDAD_VACIA : oportunidadToValues(modal.op)}
+              referencias={referencias}
+              initialCab={modal.mode === 'new' ? CAB_OPORTUNIDAD_VACIA : oportunidadToCab(modal.op)}
+              initialLineas={modal.mode === 'new' ? [] : oportunidadToLineas(modal.op)}
+              valorHeredado={modal.mode === 'new' ? null : modal.op.valor_estimado ?? null}
               submitLabel={modal.mode === 'new' ? 'Crear' : 'Guardar'}
               onCancel={() => setModal(null)}
-              onSubmit={async (values) => {
-                const payload = valuesToOportunidadPayload(values)
-                if (modal.mode === 'new') await createOportunidad(payload)
-                else await updateOportunidad(modal.op.id, payload)
+              onSubmit={async ({ cabecera, lineas }) => {
+                if (modal.mode === 'new') await createOportunidad(cabecera, lineas)
+                else await updateOportunidad(modal.op.id, cabecera, lineas)
                 setModal(null)
                 cargar()
               }}

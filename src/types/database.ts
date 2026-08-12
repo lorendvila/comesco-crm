@@ -374,30 +374,36 @@ export type Database = {
         Row: {
           cantidad: number
           created_at: string | null
+          descuento_pct: number | null
           id: string
           oportunidad_id: string
           precio_estimado_cop: number | null
           referencia_id: string
+          subtotal_cop: number | null
           unidad: string
           updated_at: string | null
         }
         Insert: {
           cantidad: number
           created_at?: string | null
+          descuento_pct?: number | null
           id?: string
           oportunidad_id: string
           precio_estimado_cop?: number | null
           referencia_id: string
+          subtotal_cop?: number | null
           unidad?: string
           updated_at?: string | null
         }
         Update: {
           cantidad?: number
           created_at?: string | null
+          descuento_pct?: number | null
           id?: string
           oportunidad_id?: string
           precio_estimado_cop?: number | null
           referencia_id?: string
+          subtotal_cop?: number | null
           unidad?: string
           updated_at?: string | null
         }
@@ -425,6 +431,7 @@ export type Database = {
           created_at: string | null
           etapa: string
           fecha_cierre: string | null
+          fecha_inicio_suministro: string | null
           id: string
           pac_descuento_pct: number | null
           plazo_pago_dias: number | null
@@ -438,6 +445,7 @@ export type Database = {
           created_at?: string | null
           etapa?: string
           fecha_cierre?: string | null
+          fecha_inicio_suministro?: string | null
           id?: string
           pac_descuento_pct?: number | null
           plazo_pago_dias?: number | null
@@ -451,6 +459,7 @@ export type Database = {
           created_at?: string | null
           etapa?: string
           fecha_cierre?: string | null
+          fecha_inicio_suministro?: string | null
           id?: string
           pac_descuento_pct?: number | null
           plazo_pago_dias?: number | null
