@@ -810,7 +810,6 @@ export type Database = {
     }
     Functions: {
       current_user_id: { Args: never; Returns: string }
-      is_admin: { Args: never; Returns: boolean }
       siguiente_numero_pedido: { Args: never; Returns: string }
     }
     Enums: {

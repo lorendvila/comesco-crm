@@ -8,8 +8,8 @@ import { createClient } from 'jsr:@supabase/supabase-js@2'
 // RLS no cubre (GoTrue) y las reglas de escalada.
 //
 // Modelo de permisos:
-//  - superadmin (y 'admin' legacy): gestiona usuarios de CUALQUIER rol, cambia
-//    roles, activa/desactiva y resetea a cualquiera.
+//  - superadmin: gestiona usuarios de CUALQUIER rol, cambia roles,
+//    activa/desactiva y resetea a cualquiera.
 //  - backoffice: SOLO comerciales (crear/activar/desactivar/reset). No puede
 //    crear ni tocar dirección/backoffice/superadmin, ni elevar roles, ni a sí
 //    mismo. No puede cambiar roles.
@@ -25,8 +25,8 @@ function json(obj: unknown): Response {
 }
 
 const ROLES_ASIGNABLES = ['superadmin', 'direccion', 'backoffice', 'comercial']
-const esSuper = (r: string) => r === 'superadmin' || r === 'admin'
-const esPrivilegiado = (r: string) => r === 'superadmin' || r === 'direccion' || r === 'backoffice' || r === 'admin'
+const esSuper = (r: string) => r === 'superadmin'
+const esPrivilegiado = (r: string) => r === 'superadmin' || r === 'direccion' || r === 'backoffice'
 
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors })
@@ -47,7 +47,7 @@ Deno.serve(async (req: Request) => {
 
     const { data: me } = await asUser
       .from('users').select('id, auth_user_id, role, is_active').eq('auth_user_id', user.id).maybeSingle()
-    // Solo gestionan usuarios superadmin/admin y backoffice.
+    // Solo gestionan usuarios superadmin y backoffice.
     if (!me || !me.is_active || !(esSuper(me.role) || me.role === 'backoffice')) {
       return json({ ok: false, error: 'No autorizado para gestionar usuarios' })
     }
@@ -61,10 +61,10 @@ Deno.serve(async (req: Request) => {
       const { data } = await asUser.from('users').select('id, auth_user_id, role, is_active').eq('id', user_id).maybeSingle()
       return data
     }
-    // ¿Quedan otros superadmin/admin activos aparte de exceptId?
+    // ¿Quedan otros superadmin activos aparte de exceptId?
     const hayOtroSuperActivo = async (exceptId: string) => {
       const { data } = await asUser.from('users')
-        .select('id').in('role', ['superadmin', 'admin']).eq('is_active', true).neq('id', exceptId)
+        .select('id').eq('role', 'superadmin').eq('is_active', true).neq('id', exceptId)
       return (data?.length ?? 0) > 0
     }
 

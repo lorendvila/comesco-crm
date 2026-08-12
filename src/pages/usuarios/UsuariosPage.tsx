@@ -110,8 +110,6 @@ export function UsuariosPage() {
                           disabled={busy === u.id}
                           onChange={(e) => cambiarRol(u, e.target.value as Role)}
                         >
-                          {/* 'admin' legacy: se muestra como actual pero no se ofrece para asignar */}
-                          {u.role === 'admin' && <option value="admin">{ROL_LABEL.admin} (legacy)</option>}
                           {ROLES_ASIGNABLES.map((r) => (
                             <option key={r} value={r}>{ROL_LABEL[r]}</option>
                           ))}

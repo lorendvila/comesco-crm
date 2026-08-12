@@ -92,7 +92,7 @@ export function InventarioPage() {
       setEditando(null)
       cargar()
     } catch {
-      setError('No se pudo guardar (¿tienes permisos de admin?).')
+      setError('No se pudo guardar (¿tienes permisos suficientes?).')
     }
   }
 
