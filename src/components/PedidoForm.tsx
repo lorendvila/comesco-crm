@@ -118,6 +118,9 @@ export function PedidoForm({ clientes, referencias, almacenes, stock, esNuevo, i
   //    (dirección NO, backoffice/superadmin SÍ, comercial NO)
   const puedeVerCostes = permisos.seeCosts(profile)
   const puedeFacturar = permisos.manageFacturacion(profile)
+  // Comercial: puede editar recibido/entregado de SUS pedidos (RLS lo acota).
+  // Dirección no es comercial -> verá el estado en solo lectura.
+  const esComercial = permisos.isComercial(profile)
   const [plazo, setPlazo] = useState<number | null>(null)
   const [descuentoCliente, setDescuentoCliente] = useState<number | null>(null)
   const [saving, setSaving] = useState(false)
@@ -330,15 +333,16 @@ export function PedidoForm({ clientes, referencias, almacenes, stock, esNuevo, i
             <select className="input" value={cab.estado} onChange={(e) => setC({ estado: e.target.value })}>
               {ESTADOS_PEDIDO.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
             </select>
-          ) : ESTADOS_COMERCIAL.includes(cab.estado) ? (
-            // El comercial solo mueve entre Recibido y Entregado.
+          ) : esComercial && ESTADOS_COMERCIAL.includes(cab.estado) ? (
+            // El comercial mueve SUS pedidos entre Recibido y Entregado (la
+            // propiedad la protege RLS). Dirección NO: cae a solo lectura.
             <select className="input" value={cab.estado} onChange={(e) => setC({ estado: e.target.value })}>
               {ESTADOS_PEDIDO.filter((s) => ESTADOS_COMERCIAL.includes(s.value)).map((s) => (
                 <option key={s.value} value={s.value}>{s.label}</option>
               ))}
             </select>
           ) : (
-            // Ya facturado/cobrado/cancelado: solo lectura para el comercial.
+            // Dirección (solo lectura) o pedido ya facturado/cobrado/anulado.
             <span className="t-body">{labelDe(ESTADOS_PEDIDO, cab.estado)}</span>
           )}
         </label>
