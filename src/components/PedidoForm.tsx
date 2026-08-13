@@ -606,10 +606,14 @@ export function PedidoForm({ clientes, referencias, almacenes, stock, esNuevo, i
 
       {congelado && (
         <p className="t-caption" style={{ color: 'var(--text-4)' }}>
-          Pedido {labelDe(ESTADOS_PEDIDO, estadoReal).toLowerCase()}: las líneas y los datos
-          económicos están bloqueados. {puedeEditar ? 'Puedes editar notas' : 'Solo consulta'}
-          {esAnulado && puedeEditar ? ' y la nota de crédito' : ''}
-          {puedeCiclo ? '; o reactivarlo para volver a operarlo.' : '.'}
+          Pedido {labelDe(ESTADOS_PEDIDO, estadoReal).toLowerCase()}: las líneas y los datos económicos están bloqueados.
+          {puedeEditar ? ' Puedes editar notas' : ' Solo consulta'}
+          {esAnulado && puedeEditar ? ' y la nota de crédito' : ''}.
+          {esAnulado
+            ? ' La anulación por nota de crédito es definitiva: si vuelve la venta, crea un pedido nuevo.'
+            : puedeCiclo
+              ? ' O reactívalo para volver a operarlo.'
+              : ''}
         </p>
       )}
 
@@ -675,7 +679,8 @@ export function PedidoForm({ clientes, referencias, almacenes, stock, esNuevo, i
                 Cancelar pedido
               </button>
             )}
-            {congelado && puedeCiclo && onReactivar && (
+            {/* Reactivar SOLO cancelado: un anulado por NC es estado final (BD lo bloquea también). */}
+            {congelado && !esAnulado && puedeCiclo && onReactivar && (
               <button className="btn btn-outline btn-sm" type="button" disabled={saving}
                 onClick={() => { if (confirm('¿Reactivar este pedido? Se descontará de nuevo el stock (la BD validará disponibilidad).')) ejecutar(onReactivar) }}>
                 Reactivar pedido

@@ -414,10 +414,10 @@ export function PedidosPage() {
               onReactivar={
                 modal.mode === 'edit'
                   ? async () => {
-                      // Un cancelado vuelve a "recibido"; un anulado (facturado)
-                      // vuelve a "facturado". La BD valida stock antes de descontar.
-                      const destino = modal.pedido.estado === 'anulado' ? 'facturado' : 'recibido'
-                      await reactivarPedido(modal.pedido.id, destino)
+                      // Solo se reactiva un CANCELADO (pre-facturación) -> "recibido".
+                      // Un anulado por NC es estado final (la UI no ofrece el botón
+                      // y la BD lo bloquea). La BD valida stock antes de descontar.
+                      await reactivarPedido(modal.pedido.id, 'recibido')
                       setModal(null)
                       cargarPedidos()
                       refrescarStock()
