@@ -14,7 +14,10 @@ import {
   getPedido,
   createPedido,
   updatePedido,
-  deletePedido,
+  cancelarPedido,
+  anularPedido,
+  reactivarPedido,
+  updateNotasDoc,
   listPedidosExport,
   listLineasExport,
   siguienteNumeroPedido,
@@ -388,13 +391,45 @@ export function PedidosPage() {
                 cargarPedidos()
                 refrescarStock()
               }}
-              onDelete={
+              onCancelar={
                 modal.mode === 'edit'
                   ? async () => {
-                      await deletePedido(modal.pedido.id)
+                      await cancelarPedido(modal.pedido.id)
                       setModal(null)
                       cargarPedidos()
                       refrescarStock()
+                    }
+                  : undefined
+              }
+              onAnular={
+                modal.mode === 'edit'
+                  ? async (nc) => {
+                      await anularPedido(modal.pedido.id, nc)
+                      setModal(null)
+                      cargarPedidos()
+                      refrescarStock()
+                    }
+                  : undefined
+              }
+              onReactivar={
+                modal.mode === 'edit'
+                  ? async () => {
+                      // Un cancelado vuelve a "recibido"; un anulado (facturado)
+                      // vuelve a "facturado". La BD valida stock antes de descontar.
+                      const destino = modal.pedido.estado === 'anulado' ? 'facturado' : 'recibido'
+                      await reactivarPedido(modal.pedido.id, destino)
+                      setModal(null)
+                      cargarPedidos()
+                      refrescarStock()
+                    }
+                  : undefined
+              }
+              onGuardarNotas={
+                modal.mode === 'edit'
+                  ? async (patch) => {
+                      await updateNotasDoc(modal.pedido.id, patch)
+                      setModal(null)
+                      cargarPedidos()
                     }
                   : undefined
               }

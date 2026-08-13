@@ -5,13 +5,14 @@ interface Props {
   clientes: ClienteResumen[]
   value: string // cliente_id seleccionado ('' si ninguno)
   onChange: (id: string) => void
+  disabled?: boolean // solo lectura: muestra el cliente sin permitir cambiarlo
 }
 
 const etiqueta = (c: ClienteResumen) => `${c.codigo_interno} · ${c.nombre}`
 
 // Buscador de clientes con autocompletado: se teclea el nombre (o código/ciudad)
 // y se filtra la lista; se elige con ratón o teclado. Sustituye al <select> largo.
-export function ClienteCombo({ clientes, value, onChange }: Props) {
+export function ClienteCombo({ clientes, value, onChange, disabled }: Props) {
   const [text, setText] = useState('')
   const [open, setOpen] = useState(false)
   const [activo, setActivo] = useState(0)
@@ -49,6 +50,11 @@ export function ClienteCombo({ clientes, value, onChange }: Props) {
   const elegir = (c: ClienteResumen) => {
     onChange(c.id)
     setOpen(false)
+  }
+
+  if (disabled) {
+    const sel = clientes.find((c) => c.id === value)
+    return <span className="t-body">{sel ? etiqueta(sel) : '—'}</span>
   }
 
   return (

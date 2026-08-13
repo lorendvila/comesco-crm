@@ -242,7 +242,63 @@ export async function updatePedido(
   await insertarLineas(id, lineas)
 }
 
-export async function deletePedido(id: string): Promise<void> {
-  const { error } = await supabase.from('pedidos').delete().eq('id', id)
+// ---- Ciclo de vida (solo cabecera; NO reescribe líneas) ----
+// La BD (mig 0027) hace el trabajo pesado: al cambiar `estado` a/desde
+// anulado/cancelado, el trigger de frontera repone o descuenta stock de forma
+// atómica y valida disponibilidad. Aquí solo emitimos el UPDATE mínimo.
+
+// Pedido no facturado -> Cancelar (repone stock).
+export async function cancelarPedido(id: string): Promise<void> {
+  const { error } = await supabase.from('pedidos').update({ estado: 'cancelado' }).eq('id', id)
   if (error) throw error
+}
+
+// Pedido facturado -> Anular con nota de crédito (repone stock + guarda NC).
+// Va en un único UPDATE: OLD.estado aún consume, así que el freeze de cabecera
+// no aplica y el NC entra junto con el cambio de estado.
+export async function anularPedido(
+  id: string,
+  nc: { numero: string; fecha: string | null },
+): Promise<void> {
+  const { error } = await supabase
+    .from('pedidos')
+    .update({ estado: 'anulado', nota_credito_numero: nc.numero, nota_credito_fecha: nc.fecha })
+    .eq('id', id)
+  if (error) throw error
+}
+
+// Pedido cancelado/anulado -> Reactivar. La BD valida stock (error atómico si
+// falta) y descuenta. `estadoDestino` es el estado consumidor al que vuelve.
+export async function reactivarPedido(id: string, estadoDestino: string): Promise<void> {
+  const { error } = await supabase.from('pedidos').update({ estado: estadoDestino }).eq('id', id)
+  if (error) throw error
+}
+
+// Guardado limitado para pedidos anulados/cancelados: solo campos que el freeze
+// de la BD permite (notas, documentación, NC). Nunca toca líneas ni económicos.
+export async function updateNotasDoc(
+  id: string,
+  patch: { notas: string | null; nota_credito_numero?: string | null; nota_credito_fecha?: string | null },
+): Promise<void> {
+  const { error } = await supabase.from('pedidos').update(patch).eq('id', id)
+  if (error) throw error
+}
+
+// Traduce el mensaje de error de la BD a algo legible para el usuario: los
+// triggers de stock devuelven UUIDs de referencia/almacén; los sustituimos por
+// nombres. Si no reconocemos el error, devolvemos el propio mensaje (mejor que
+// un genérico); solo caemos al genérico si no hay mensaje.
+const RE_UUID = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi
+export function mensajeErrorPedido(
+  err: unknown,
+  referencias: { id: string; nombre_producto: string; formato: string }[],
+  almacenes: { id: string; ciudad: string }[],
+): string {
+  const raw =
+    (err as { message?: string } | null)?.message ?? (typeof err === 'string' ? err : '')
+  if (!raw) return 'No se pudo completar la operación. Inténtalo de nuevo.'
+  const map = new Map<string, string>()
+  for (const r of referencias) map.set(r.id.toLowerCase(), `${r.nombre_producto} · ${r.formato}`)
+  for (const a of almacenes) map.set(a.id.toLowerCase(), a.ciudad)
+  return raw.replace(RE_UUID, (u) => map.get(u.toLowerCase()) ?? u)
 }

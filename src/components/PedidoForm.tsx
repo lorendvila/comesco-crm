@@ -10,6 +10,7 @@ import { ClienteCombo } from './ClienteCombo'
 import type { Almacen } from '../data/almacenes'
 import type { StockMap } from '../data/inventario'
 import { getCondiciones } from '../data/condiciones'
+import { mensajeErrorPedido } from '../data/pedidos'
 import type { LineaInput } from '../data/pedidos'
 import type { TablesInsert } from '../types/database'
 
@@ -67,6 +68,17 @@ export const LINEA_VACIA: LineaState = { referencia_id: '', cantidad: '', unidad
 // refuerza con el trigger pedidos_proteger_facturacion.
 const ESTADOS_COMERCIAL = ['recibido', 'entregado']
 
+// Estados que se pueden elegir en el desplegable de estado. Anulado/Cancelado
+// NO están aquí a propósito: esas transiciones van por las acciones dedicadas
+// (Cancelar / Anular con NC / Reactivar), nunca por el Guardar normal — que
+// reescribe líneas y la BD bloquearía en un pedido no consumidor.
+const ESTADOS_SELECCIONABLES = ESTADOS_PEDIDO.filter(
+  (s) => s.value !== 'anulado' && s.value !== 'cancelado',
+)
+
+// ¿El estado consume stock? (espejo de pedido_consume_stock en la BD)
+const consumeStock = (estado: string) => estado !== 'anulado' && estado !== 'cancelado'
+
 const num = (s: string) => {
   const n = Number(s)
   return Number.isFinite(n) ? n : 0
@@ -105,10 +117,20 @@ interface Props {
   submitLabel: string
   onSubmit: (data: { cabecera: TablesInsert<'pedidos'>; lineas: LineaInput[] }) => Promise<void>
   onCancel: () => void
-  onDelete?: () => Promise<void>
+  // Acciones de ciclo de vida (solo en modo edición). Cada una hace únicamente
+  // el UPDATE de cabecera necesario; la BD repone/descuenta stock y valida.
+  onCancelar?: () => Promise<void>
+  onAnular?: (nc: { numero: string; fecha: string | null }) => Promise<void>
+  onReactivar?: () => Promise<void>
+  // Guardado limitado (notas/documentación/NC) para pedidos anulados/cancelados.
+  onGuardarNotas?: (patch: {
+    notas: string | null
+    nota_credito_numero: string | null
+    nota_credito_fecha: string | null
+  }) => Promise<void>
 }
 
-export function PedidoForm({ clientes, referencias, almacenes, stock, esNuevo, initialCab, initialLineas, submitLabel, onSubmit, onCancel, onDelete }: Props) {
+export function PedidoForm({ clientes, referencias, almacenes, stock, esNuevo, initialCab, initialLineas, submitLabel, onSubmit, onCancel, onCancelar, onAnular, onReactivar, onGuardarNotas }: Props) {
   const [cab, setCab] = useState<CabeceraState>(initialCab)
   const [lineas, setLineas] = useState<LineaState[]>(initialLineas.length ? initialLineas : [{ ...LINEA_VACIA }])
   const { profile } = useAuth()
@@ -121,10 +143,27 @@ export function PedidoForm({ clientes, referencias, almacenes, stock, esNuevo, i
   // Comercial: puede editar recibido/entregado de SUS pedidos (RLS lo acota).
   // Dirección no es comercial -> verá el estado en solo lectura.
   const esComercial = permisos.isComercial(profile)
+  // Operar el ciclo de vida (cancelar/anular/reactivar) se reserva a
+  // Backoffice/Superadmin. Comercial y Dirección no lo ven.
+  const puedeCiclo = permisos.managePedidos(profile)
+  // ¿Puede editar algo? Dirección solo consulta (todo en solo lectura).
+  const puedeEditar = puedeCiclo || esComercial
+  // Estado REAL guardado del pedido (no el del desplegable sin guardar): decide
+  // el "congelado" y qué acción de ciclo corresponde.
+  const estadoReal = initialCab.estado
+  const congelado = !esNuevo && !consumeStock(estadoReal)
+  const esAnulado = estadoReal === 'anulado'
+  // "Facturado" a efectos de ciclo: hay factura emitida (por estado o por número).
+  const tieneFactura =
+    estadoReal === 'facturado' || estadoReal === 'cobrado' || !!initialCab.numero_factura
+  // Campos del cuerpo editables: solo en pedido consumidor y con permiso.
+  const editable = puedeEditar && !congelado
   const [plazo, setPlazo] = useState<number | null>(null)
   const [descuentoCliente, setDescuentoCliente] = useState<number | null>(null)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  // Panel de anulación (pide Nº y fecha de nota de crédito).
+  const [anulando, setAnulando] = useState(false)
   // El valor de la factura se calcula solo (total con IVA) mientras no se edite a mano.
   const [valorFacturaTocado, setValorFacturaTocado] = useState(initialCab.valor_factura !== '')
   // Si el usuario elige almacén a mano, dejamos de auto-asignarlo por la ciudad del cliente.
@@ -249,6 +288,9 @@ export function PedidoForm({ clientes, referencias, almacenes, stock, esNuevo, i
 
   const submit = async (e: FormEvent) => {
     e.preventDefault()
+    // Guarda de seguridad: en un pedido congelado o en solo lectura el Guardar
+    // normal (que reescribe líneas) no debe ejecutarse ni por Enter.
+    if (congelado || !puedeEditar) return
     if (!cab.cliente_id) {
       setError('Elige un cliente.')
       return
@@ -297,19 +339,58 @@ export function PedidoForm({ clientes, referencias, almacenes, stock, esNuevo, i
           }
         }),
       })
-    } catch {
-      setError('No se pudo guardar el pedido.')
+    } catch (e) {
+      setError(mensajeErrorPedido(e, referencias, almacenes))
     } finally {
       setSaving(false)
     }
   }
+
+  // Envuelve una acción de ciclo de vida: gestiona `saving`, limpia el error y
+  // traduce el mensaje de la BD si algo falla (p. ej. stock al reactivar).
+  const ejecutar = async (fn: () => Promise<void>) => {
+    setError(null)
+    setSaving(true)
+    try {
+      await fn()
+    } catch (e) {
+      setError(mensajeErrorPedido(e, referencias, almacenes))
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  // Guarda solo notas/documentación/NC (pedido congelado): no reescribe líneas.
+  const guardarNotas = () =>
+    ejecutar(async () => {
+      if (!onGuardarNotas) return
+      await onGuardarNotas({
+        notas: cab.notas.trim() || null,
+        nota_credito_numero: cab.nota_credito_numero.trim() || null,
+        nota_credito_fecha: cab.nota_credito_fecha || null,
+      })
+    })
+
+  // Confirma la anulación con NC. El número de NC es obligatorio.
+  const confirmarAnulacion = () =>
+    ejecutar(async () => {
+      if (!onAnular) return
+      if (!cab.nota_credito_numero.trim()) {
+        setError('Indica el número de la nota de crédito para anular.')
+        return
+      }
+      await onAnular({
+        numero: cab.nota_credito_numero.trim(),
+        fecha: cab.nota_credito_fecha || null,
+      })
+    })
 
   return (
     <form className="stack stack-4" onSubmit={submit}>
       <div className="form-grid">
         <div className="field field--full">
           <span className="field__label">Cliente</span>
-          <ClienteCombo clientes={clientes} value={cab.cliente_id} onChange={(id) => setC({ cliente_id: id })} />
+          <ClienteCombo clientes={clientes} value={cab.cliente_id} onChange={(id) => setC({ cliente_id: id })} disabled={!editable} />
         </div>
         {clienteSel && (
           <div className="field field--full">
@@ -323,51 +404,59 @@ export function PedidoForm({ clientes, referencias, almacenes, stock, esNuevo, i
         )}
         <label className="field">
           <span className="field__label">Canal de origen</span>
-          <select className="input" value={cab.canal_origen} onChange={(e) => setC({ canal_origen: e.target.value })}>
-            {CANALES_ORIGEN.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
-          </select>
+          {editable ? (
+            <select className="input" value={cab.canal_origen} onChange={(e) => setC({ canal_origen: e.target.value })}>
+              {CANALES_ORIGEN.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
+            </select>
+          ) : (
+            <span className="t-body">{labelDe(CANALES_ORIGEN, cab.canal_origen)}</span>
+          )}
         </label>
         <label className="field">
           <span className="field__label">Estado</span>
-          {puedeFacturar ? (
+          {editable && puedeFacturar ? (
             <select className="input" value={cab.estado} onChange={(e) => setC({ estado: e.target.value })}>
-              {ESTADOS_PEDIDO.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
+              {ESTADOS_SELECCIONABLES.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
             </select>
-          ) : esComercial && ESTADOS_COMERCIAL.includes(cab.estado) ? (
+          ) : editable && esComercial && ESTADOS_COMERCIAL.includes(cab.estado) ? (
             // El comercial mueve SUS pedidos entre Recibido y Entregado (la
             // propiedad la protege RLS). Dirección NO: cae a solo lectura.
             <select className="input" value={cab.estado} onChange={(e) => setC({ estado: e.target.value })}>
-              {ESTADOS_PEDIDO.filter((s) => ESTADOS_COMERCIAL.includes(s.value)).map((s) => (
+              {ESTADOS_SELECCIONABLES.filter((s) => ESTADOS_COMERCIAL.includes(s.value)).map((s) => (
                 <option key={s.value} value={s.value}>{s.label}</option>
               ))}
             </select>
           ) : (
-            // Dirección (solo lectura) o pedido ya facturado/cobrado/anulado.
+            // Dirección, pedido congelado (anulado/cancelado) o ya facturado/cobrado.
             <span className="t-body">{labelDe(ESTADOS_PEDIDO, cab.estado)}</span>
           )}
         </label>
         <label className="field">
           <span className="field__label">Almacén (de dónde sale)</span>
-          <select className="input" value={cab.almacen_id} onChange={(e) => { setAlmacenTocado(true); setC({ almacen_id: e.target.value }) }}>
-            <option value="">— elige almacén</option>
-            {almacenes.map((a) => <option key={a.id} value={a.id}>{a.ciudad}</option>)}
-          </select>
+          {editable ? (
+            <select className="input" value={cab.almacen_id} onChange={(e) => { setAlmacenTocado(true); setC({ almacen_id: e.target.value }) }}>
+              <option value="">— elige almacén</option>
+              {almacenes.map((a) => <option key={a.id} value={a.id}>{a.ciudad}</option>)}
+            </select>
+          ) : (
+            <span className="t-body">{almacenes.find((a) => a.id === cab.almacen_id)?.ciudad ?? '—'}</span>
+          )}
         </label>
         <label className="field">
           <span className="field__label">Recepción</span>
-          <input className="input" type="date" value={cab.fecha_pedido} onChange={(e) => setC({ fecha_pedido: e.target.value })} required />
+          <input className="input" type="date" value={cab.fecha_pedido} onChange={(e) => setC({ fecha_pedido: e.target.value })} required disabled={!editable} />
         </label>
         <label className="field">
           <span className="field__label">Entrega (opcional)</span>
-          <input className="input" type="date" value={cab.fecha_entrega} onChange={(e) => setC({ fecha_entrega: e.target.value })} />
+          <input className="input" type="date" value={cab.fecha_entrega} onChange={(e) => setC({ fecha_entrega: e.target.value })} disabled={!editable} />
         </label>
         <label className="field">
           <span className="field__label">Factura (opcional)</span>
-          <input className="input" type="date" value={cab.fecha_factura} onChange={(e) => setC({ fecha_factura: e.target.value })} />
+          <input className="input" type="date" value={cab.fecha_factura} onChange={(e) => setC({ fecha_factura: e.target.value })} disabled={!editable} />
         </label>
         <label className="field field--full">
           <span className="field__label">Notas</span>
-          <textarea className="textarea" value={cab.notas} onChange={(e) => setC({ notas: e.target.value })} />
+          <textarea className="textarea" value={cab.notas} onChange={(e) => setC({ notas: e.target.value })} disabled={!puedeEditar} />
         </label>
       </div>
 
@@ -390,7 +479,7 @@ export function PedidoForm({ clientes, referencias, almacenes, stock, esNuevo, i
               <div className="linea-row">
                 <label className="linea-cell">
                   <span className="linea-cell__lbl">Referencia</span>
-                  <select className="input" value={l.referencia_id} onChange={(e) => onRef(i, e.target.value)}>
+                  <select className="input" value={l.referencia_id} onChange={(e) => onRef(i, e.target.value)} disabled={!editable}>
                     <option value="">Referencia…</option>
                     {referencias.map((r) => (
                       <option key={r.id} value={r.id}>{r.nombre_producto} · {r.formato}</option>
@@ -399,18 +488,20 @@ export function PedidoForm({ clientes, referencias, almacenes, stock, esNuevo, i
                 </label>
                 <label className="linea-cell">
                   <span className="linea-cell__lbl">Unidades</span>
-                  <input className="input" type="number" min="0" step="any" placeholder="Uds." value={l.cantidad} onChange={(e) => setLinea(i, { cantidad: e.target.value })} />
+                  <input className="input" type="number" min="0" step="any" placeholder="Uds." value={l.cantidad} onChange={(e) => setLinea(i, { cantidad: e.target.value })} disabled={!editable} />
                 </label>
                 <label className="linea-cell">
                   <span className="linea-cell__lbl">Precio unitario (neto)</span>
-                  <input className="input" type="number" min="0" step="any" placeholder="Neto" value={l.precioBase} onChange={(e) => setLinea(i, { precioBase: e.target.value })} />
+                  <input className="input" type="number" min="0" step="any" placeholder="Neto" value={l.precioBase} onChange={(e) => setLinea(i, { precioBase: e.target.value })} disabled={!editable} />
                 </label>
                 <label className="linea-cell">
                   <span className="linea-cell__lbl">% de descuento</span>
-                  <input className="input" type="number" min="0" max="100" step="0.01" placeholder="% dto" value={l.descuento} onChange={(e) => setLinea(i, { descuento: e.target.value })} />
+                  <input className="input" type="number" min="0" max="100" step="0.01" placeholder="% dto" value={l.descuento} onChange={(e) => setLinea(i, { descuento: e.target.value })} disabled={!editable} />
                 </label>
                 <span className="linea-row__sub t-body-sm">{formatCOP(c.totalSub)}</span>
-                <button className="btn btn-sm btn-outline" type="button" onClick={() => setLineas((ls) => ls.filter((_, idx) => idx !== i))} title="Quitar línea">✕</button>
+                {editable
+                  ? <button className="btn btn-sm btn-outline" type="button" onClick={() => setLineas((ls) => ls.filter((_, idx) => idx !== i))} title="Quitar línea">✕</button>
+                  : <span />}
               </div>
               <span className="t-caption linea-stock">
                 {l.precioBase !== '' && <>Neto ud: {formatCOP(c.netoUd)} · con IVA: {formatCOP(c.conIvaUd)} · </>}
@@ -425,11 +516,13 @@ export function PedidoForm({ clientes, referencias, almacenes, stock, esNuevo, i
             </div>
           )
         })}
-        <div>
-          <button className="btn btn-sm btn-outline" type="button" onClick={() => setLineas((ls) => [...ls, { ...LINEA_VACIA }])}>
-            + Añadir línea
-          </button>
-        </div>
+        {editable && (
+          <div>
+            <button className="btn btn-sm btn-outline" type="button" onClick={() => setLineas((ls) => [...ls, { ...LINEA_VACIA }])}>
+              + Añadir línea
+            </button>
+          </div>
+        )}
         <div className="stack stack-1" style={{ alignItems: 'flex-end' }}>
           <span className="t-caption">Base imponible (est.): {formatCOP(desglose.base)}</span>
           <span className="t-caption">IVA (est.): {formatCOP(desglose.iva)}</span>
@@ -451,7 +544,7 @@ export function PedidoForm({ clientes, referencias, almacenes, stock, esNuevo, i
         <div className="form-grid">
           <label className="field">
             <span className="field__label">Nº de factura</span>
-            <input className="input" value={cab.numero_factura} onChange={(e) => setC({ numero_factura: e.target.value })} />
+            <input className="input" value={cab.numero_factura} onChange={(e) => setC({ numero_factura: e.target.value })} disabled={congelado} />
           </label>
           <div className="field">
             <span className="field__label">Saldo</span>
@@ -460,7 +553,7 @@ export function PedidoForm({ clientes, referencias, almacenes, stock, esNuevo, i
           <label className="field">
             <span className="field__label">Valor factura (con IVA)</span>
             <input className="input" type="number" min="0" step="any" value={cab.valor_factura}
-              onChange={(e) => { setValorFacturaTocado(true); setC({ valor_factura: e.target.value }) }} />
+              onChange={(e) => { setValorFacturaTocado(true); setC({ valor_factura: e.target.value }) }} disabled={congelado} />
             {!valorFacturaTocado
               ? total > 0 && (
                   <span className="t-caption" style={{ color: 'var(--text-4)', marginTop: 'var(--sp-1)' }}>
@@ -480,12 +573,12 @@ export function PedidoForm({ clientes, referencias, almacenes, stock, esNuevo, i
           </label>
           <label className="field">
             <span className="field__label">Pagado (COP)</span>
-            <input className="input" type="number" min="0" step="any" value={cab.pagado} onChange={(e) => setC({ pagado: e.target.value })} />
+            <input className="input" type="number" min="0" step="any" value={cab.pagado} onChange={(e) => setC({ pagado: e.target.value })} disabled={congelado} />
           </label>
           <label className="field">
             <span className="field__label">Vencimiento</span>
-            <input className="input" type="date" value={cab.fecha_vencimiento} onChange={(e) => setC({ fecha_vencimiento: e.target.value })} />
-            {vencSugerido && cab.fecha_vencimiento !== vencSugerido && (
+            <input className="input" type="date" value={cab.fecha_vencimiento} onChange={(e) => setC({ fecha_vencimiento: e.target.value })} disabled={congelado} />
+            {!congelado && vencSugerido && cab.fecha_vencimiento !== vencSugerido && (
               <button type="button" className="btn btn-sm btn-outline" style={{ marginTop: 'var(--sp-1)' }} onClick={() => setC({ fecha_vencimiento: vencSugerido })}>
                 Sugerir: factura + {plazo} días
               </button>
@@ -493,17 +586,17 @@ export function PedidoForm({ clientes, referencias, almacenes, stock, esNuevo, i
           </label>
           <label className="field">
             <span className="field__label">Fecha de pago</span>
-            <input className="input" type="date" value={cab.fecha_pago} onChange={(e) => setC({ fecha_pago: e.target.value })} />
+            <input className="input" type="date" value={cab.fecha_pago} onChange={(e) => setC({ fecha_pago: e.target.value })} disabled={congelado} />
           </label>
-          {cab.estado === 'anulado' && (
+          {estadoReal === 'anulado' && (
             <>
               <label className="field">
                 <span className="field__label">Nº nota de crédito</span>
-                <input className="input" value={cab.nota_credito_numero} onChange={(e) => setC({ nota_credito_numero: e.target.value })} />
+                <input className="input" value={cab.nota_credito_numero} onChange={(e) => setC({ nota_credito_numero: e.target.value })} disabled={!puedeEditar} />
               </label>
               <label className="field">
                 <span className="field__label">Fecha nota de crédito</span>
-                <input className="input" type="date" value={cab.nota_credito_fecha} onChange={(e) => setC({ nota_credito_fecha: e.target.value })} />
+                <input className="input" type="date" value={cab.nota_credito_fecha} onChange={(e) => setC({ nota_credito_fecha: e.target.value })} disabled={!puedeEditar} />
               </label>
             </>
           )}
@@ -511,20 +604,86 @@ export function PedidoForm({ clientes, referencias, almacenes, stock, esNuevo, i
       </div>
       )}
 
+      {congelado && (
+        <p className="t-caption" style={{ color: 'var(--text-4)' }}>
+          Pedido {labelDe(ESTADOS_PEDIDO, estadoReal).toLowerCase()}: las líneas y los datos
+          económicos están bloqueados. {puedeEditar ? 'Puedes editar notas' : 'Solo consulta'}
+          {esAnulado && puedeEditar ? ' y la nota de crédito' : ''}
+          {puedeCiclo ? '; o reactivarlo para volver a operarlo.' : '.'}
+        </p>
+      )}
+
+      {/* Panel de anulación con nota de crédito (pedido facturado) */}
+      {anulando && (
+        <div className="card stack stack-2" style={{ borderColor: 'var(--amber, #b45309)' }}>
+          <span className="t-label">Anular con nota de crédito</span>
+          <div className="form-grid">
+            <label className="field">
+              <span className="field__label">Nº nota de crédito</span>
+              <input className="input" autoFocus value={cab.nota_credito_numero}
+                onChange={(e) => setC({ nota_credito_numero: e.target.value })} />
+            </label>
+            <label className="field">
+              <span className="field__label">Fecha nota de crédito</span>
+              <input className="input" type="date" value={cab.nota_credito_fecha}
+                onChange={(e) => setC({ nota_credito_fecha: e.target.value })} />
+            </label>
+          </div>
+          <p className="t-caption" style={{ color: 'var(--text-4)' }}>
+            Al anular, el stock de las líneas vuelve al almacén y el pedido queda bloqueado.
+          </p>
+          <div className="cluster cluster-2">
+            <button className="btn btn-primary btn-sm" type="button" disabled={saving} onClick={confirmarAnulacion}>
+              {saving ? 'Anulando…' : 'Confirmar anulación'}
+            </button>
+            <button className="btn btn-outline btn-sm" type="button" disabled={saving} onClick={() => setAnulando(false)}>
+              Volver
+            </button>
+          </div>
+        </div>
+      )}
+
       {error && <p className="login-error">{error}</p>}
 
-      <div className="cluster cluster-3" style={{ justifyContent: 'space-between' }}>
-        <div className="cluster cluster-3">
-          <button className="btn btn-primary" type="submit" disabled={saving}>{saving ? 'Guardando…' : submitLabel}</button>
-          <button className="btn btn-outline" type="button" onClick={onCancel} disabled={saving}>Cancelar</button>
+      {!anulando && (
+        <div className="cluster cluster-3" style={{ justifyContent: 'space-between' }}>
+          <div className="cluster cluster-3">
+            {/* Guardar normal: solo en pedido consumidor y con permiso de edición */}
+            {editable && (
+              <button className="btn btn-primary" type="submit" disabled={saving}>{saving ? 'Guardando…' : submitLabel}</button>
+            )}
+            {/* Guardar notas/NC de un pedido congelado */}
+            {congelado && puedeEditar && onGuardarNotas && (
+              <button className="btn btn-primary" type="button" disabled={saving} onClick={guardarNotas}>
+                {saving ? 'Guardando…' : 'Guardar notas'}
+              </button>
+            )}
+            <button className="btn btn-outline" type="button" onClick={onCancel} disabled={saving}>Cerrar</button>
+          </div>
+
+          {/* Acciones de ciclo de vida (Backoffice/Superadmin) */}
+          <div className="cluster cluster-2">
+            {!congelado && puedeCiclo && tieneFactura && onAnular && (
+              <button className="btn btn-outline btn-sm" type="button" disabled={saving}
+                onClick={() => { if (!cab.nota_credito_fecha) setC({ nota_credito_fecha: new Date().toISOString().slice(0, 10) }); setAnulando(true) }}>
+                Anular con nota de crédito
+              </button>
+            )}
+            {!congelado && puedeCiclo && !tieneFactura && onCancelar && (
+              <button className="btn btn-outline btn-sm" type="button" disabled={saving}
+                onClick={() => { if (confirm('¿Cancelar este pedido? El stock de las líneas volverá al almacén.')) ejecutar(onCancelar) }}>
+                Cancelar pedido
+              </button>
+            )}
+            {congelado && puedeCiclo && onReactivar && (
+              <button className="btn btn-outline btn-sm" type="button" disabled={saving}
+                onClick={() => { if (confirm('¿Reactivar este pedido? Se descontará de nuevo el stock (la BD validará disponibilidad).')) ejecutar(onReactivar) }}>
+                Reactivar pedido
+              </button>
+            )}
+          </div>
         </div>
-        {onDelete && (
-          <button className="btn btn-outline btn-sm" type="button" disabled={saving}
-            onClick={async () => { if (confirm('¿Borrar este pedido?')) await onDelete() }}>
-            Borrar
-          </button>
-        )}
-      </div>
+      )}
     </form>
   )
 }
