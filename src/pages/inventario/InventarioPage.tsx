@@ -4,6 +4,7 @@ import { useAuth } from '../../auth/AuthProvider'
 import { permisos } from '../../auth/permisos'
 import { listInventario, upsertInventario, updateCosteReferencia, updateTarifasReferencia } from '../../data/inventario'
 import type { InventarioFila } from '../../data/inventario'
+import { descatalogarReferencia, restaurarReferencia } from '../../data/referencias'
 import { formatCOP, formatFechaHora, colorFamilia, costeConComision } from '../../data/constants'
 import { downloadCSV } from '../../lib/csv'
 
@@ -32,9 +33,11 @@ export function InventarioPage() {
   // El modal edita stock (inventario) + coste/tarifas (referencias): requiere
   // operar cualquiera de las dos áreas. (La protección del coste llega en Fase 3.)
   const puedeEditar = permisos.manageInventario(profile) || permisos.manageReferencias(profile)
+  const puedeDescatalogar = permisos.manageReferencias(profile) // descatalogar/restaurar referencias
   const puedeVerCostes = permisos.seeCosts(profile) // coste/valor de stock: no para comercial
   const [filas, setFilas] = useState<InventarioFila[]>([])
   const [ciudad, setCiudad] = useState<string>('') // '' = todas
+  const [verDescatalogadas, setVerDescatalogadas] = useState(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [editando, setEditando] = useState<InventarioFila | null>(null)
@@ -42,13 +45,13 @@ export function InventarioPage() {
 
   const cargar = () => {
     setLoading(true)
-    listInventario()
+    listInventario(verDescatalogadas)
       .then(setFilas)
       .catch(() => setError('No se pudo cargar el inventario.'))
       .finally(() => setLoading(false))
   }
 
-  useEffect(cargar, [])
+  useEffect(cargar, [verDescatalogadas])
 
   const ciudades = useMemo(() => [...new Set(filas.map((f) => f.almacen.ciudad))].sort(), [filas])
   const visibles = useMemo(() => (ciudad ? filas.filter((f) => f.almacen.ciudad === ciudad) : filas), [filas, ciudad])
@@ -149,6 +152,12 @@ export function InventarioPage() {
               {ciudades.map((c) => <option key={c} value={c}>{c}</option>)}
             </select>
           </label>
+          {puedeDescatalogar && (
+            <label className="cluster cluster-1" style={{ alignItems: 'center' }}>
+              <input type="checkbox" checked={verDescatalogadas} onChange={(e) => setVerDescatalogadas(e.target.checked)} />
+              <span className="t-body-sm">Mostrar descatalogadas</span>
+            </label>
+          )}
           {puedeVerCostes && (
             <div className="card-metric" style={{ marginLeft: 'auto' }}>
               <p className="card-metric__label">Valor del stock{ciudad ? ` · ${ciudad}` : ' · todas'}</p>
@@ -183,12 +192,13 @@ export function InventarioPage() {
             </thead>
             <tbody>
               {visibles.map((f) => (
-                <tr key={`${f.referencia_id}-${f.almacen.id}`}>
+                <tr key={`${f.referencia_id}-${f.almacen.id}`} style={f.descatalogada ? { opacity: 0.55 } : undefined}>
                   <td className="mono">{f.codigo_interno}</td>
                   <td className="mono">{f.sku ?? '—'}</td>
                   <td>
                     <span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', background: colorFamilia(f.categoria), marginRight: 8 }} />
                     {f.nombre_producto}
+                    {f.descatalogada && <span className="badge" style={{ marginLeft: 8 }}>Descatalogada</span>}
                   </td>
                   <td>{f.formato}</td>
                   <td>{f.almacen.ciudad}</td>
@@ -251,9 +261,34 @@ export function InventarioPage() {
                 <span className="field__label">Notas</span>
                 <textarea className="textarea" value={form.notas} onChange={(e) => setForm({ ...form, notas: e.target.value })} />
               </label>
-              <div className="cluster cluster-3 field--full">
-                <button className="btn btn-primary" type="submit">Guardar</button>
-                <button className="btn btn-outline" type="button" onClick={() => setEditando(null)}>Cancelar</button>
+              <div className="cluster cluster-3 field--full" style={{ justifyContent: 'space-between' }}>
+                <div className="cluster cluster-3">
+                  <button className="btn btn-primary" type="submit">Guardar</button>
+                  <button className="btn btn-outline" type="button" onClick={() => setEditando(null)}>Cancelar</button>
+                </div>
+                {puedeDescatalogar && (
+                  <button
+                    className="btn btn-outline btn-sm"
+                    type="button"
+                    onClick={async () => {
+                      const ref = editando
+                      const msg = ref.descatalogada
+                        ? '¿Restaurar esta referencia al catálogo?'
+                        : '¿Descatalogar esta referencia? Sale del catálogo operativo; el histórico que la use se conserva.'
+                      if (!confirm(msg)) return
+                      try {
+                        if (ref.descatalogada) await restaurarReferencia(ref.referencia_id)
+                        else await descatalogarReferencia(ref.referencia_id)
+                        setEditando(null)
+                        cargar()
+                      } catch {
+                        setError('No se pudo cambiar el estado de catálogo (¿permisos suficientes?).')
+                      }
+                    }}
+                  >
+                    {editando.descatalogada ? 'Restaurar al catálogo' : 'Descatalogar'}
+                  </button>
+                )}
               </div>
             </form>
           </div>

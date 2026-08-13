@@ -40,6 +40,18 @@ export async function listReferencias(): Promise<ReferenciaResumen[]> {
   return (refsRes.data ?? []).map((r) => ({ ...r, coste_almacen_cop: costes[r.id] ?? null })) as ReferenciaResumen[]
 }
 
+// Descatalogar (soft-delete) / restaurar una referencia. NO borra físicamente
+// (la BD lo impide) y solo Backoffice/Superadmin puede hacerlo (mig 0029). El
+// histórico (pedidos/oportunidades que la usan) sigue resolviendo su nombre.
+export async function descatalogarReferencia(id: string): Promise<void> {
+  const { error } = await supabase.from('referencias').update({ deleted_at: new Date().toISOString() }).eq('id', id)
+  if (error) throw error
+}
+export async function restaurarReferencia(id: string): Promise<void> {
+  const { error } = await supabase.from('referencias').update({ deleted_at: null }).eq('id', id)
+  if (error) throw error
+}
+
 // Precio base (neto) de una referencia según el canal del cliente.
 // Tarifa base NETA (columna J del maestro) para el canal del cliente. Si el
 // cliente no tiene canal definido —o ese canal no tiene precio cargado— se cae

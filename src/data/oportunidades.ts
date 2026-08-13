@@ -26,12 +26,17 @@ export interface LineaOportunidadInput {
   subtotal_cop: number | null // valor mensual neto de la línea (cantidad × precio neto)
 }
 
-export async function listOportunidades(): Promise<OportunidadConCliente[]> {
-  const { data, error } = await supabase
+// Por defecto solo las operativas (no archivadas). `incluirArchivadas` las trae
+// todas para la vista con el toggle "mostrar archivadas". Recuerda la distinción:
+// etapa='cierre_perdido' es resultado comercial (permanece en histórico);
+// deleted_at es archivada (retirada de la operativa).
+export async function listOportunidades(incluirArchivadas = false): Promise<OportunidadConCliente[]> {
+  let q = supabase
     .from('oportunidades')
     .select('*, clientes(nombre, codigo_interno)')
     .order('created_at', { ascending: false })
-    .returns<OportunidadConCliente[]>()
+  if (!incluirArchivadas) q = q.is('deleted_at', null)
+  const { data, error } = await q.returns<OportunidadConCliente[]>()
   if (error) throw error
   return data ?? []
 }
@@ -97,7 +102,13 @@ export async function moverOportunidadEtapa(id: string, etapa: string): Promise<
   if (error) throw error
 }
 
-export async function deleteOportunidad(id: string): Promise<void> {
-  const { error } = await supabase.from('oportunidades').delete().eq('id', id)
+// Archivar (soft-delete) / restaurar. NO borra físicamente (la BD lo impide).
+// Solo Backoffice/Superadmin (mig 0029). Conserva la oportunidad y sus líneas.
+export async function archivarOportunidad(id: string): Promise<void> {
+  const { error } = await supabase.from('oportunidades').update({ deleted_at: new Date().toISOString() }).eq('id', id)
+  if (error) throw error
+}
+export async function restaurarOportunidad(id: string): Promise<void> {
+  const { error } = await supabase.from('oportunidades').update({ deleted_at: null }).eq('id', id)
   if (error) throw error
 }

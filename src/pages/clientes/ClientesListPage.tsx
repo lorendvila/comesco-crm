@@ -4,20 +4,26 @@ import { listClientes } from '../../data/clientes'
 import type { ClienteResumen } from '../../data/clientes'
 import { CANALES, ESTADOS, labelDe, colorEstadoCliente } from '../../data/constants'
 import { Badge } from '../../components/Badge'
+import { useAuth } from '../../auth/AuthProvider'
+import { permisos } from '../../auth/permisos'
 
 export function ClientesListPage() {
   const navigate = useNavigate()
+  const { profile } = useAuth()
+  const puedeGestionar = permisos.manageClientes(profile)
   const [clientes, setClientes] = useState<ClienteResumen[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [q, setQ] = useState('')
+  const [verArchivados, setVerArchivados] = useState(false)
 
   useEffect(() => {
-    listClientes()
+    setLoading(true)
+    listClientes(verArchivados)
       .then(setClientes)
       .catch(() => setError('No se pudieron cargar los clientes.'))
       .finally(() => setLoading(false))
-  }, [])
+  }, [verArchivados])
 
   const filtrados = useMemo(() => {
     const t = q.trim().toLowerCase()
@@ -42,13 +48,21 @@ export function ClientesListPage() {
         </button>
       </div>
 
-      <input
-        className="input"
-        placeholder="Buscar por nombre, código o ciudad…"
-        value={q}
-        onChange={(e) => setQ(e.target.value)}
-        style={{ maxWidth: 360 }}
-      />
+      <div className="cluster cluster-3" style={{ alignItems: 'center' }}>
+        <input
+          className="input"
+          placeholder="Buscar por nombre, código o ciudad…"
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          style={{ maxWidth: 360 }}
+        />
+        {puedeGestionar && (
+          <label className="cluster cluster-1" style={{ alignItems: 'center' }}>
+            <input type="checkbox" checked={verArchivados} onChange={(e) => setVerArchivados(e.target.checked)} />
+            <span className="t-body-sm">Mostrar archivados</span>
+          </label>
+        )}
+      </div>
 
       {loading && <p className="t-body-sm">Cargando…</p>}
       {error && <p className="login-error">{error}</p>}
@@ -67,9 +81,9 @@ export function ClientesListPage() {
             </thead>
             <tbody>
               {filtrados.map((c) => (
-                <tr key={c.id} onClick={() => navigate(`/clientes/${c.id}`)}>
+                <tr key={c.id} onClick={() => navigate(`/clientes/${c.id}`)} style={c.deleted_at ? { opacity: 0.55 } : undefined}>
                   <td className="mono">{c.codigo_interno}</td>
-                  <td>{c.nombre}</td>
+                  <td>{c.nombre}{c.deleted_at && <span className="badge" style={{ marginLeft: 8 }}>Archivado</span>}</td>
                   <td>{labelDe(CANALES, c.canal)}</td>
                   <td><Badge color={colorEstadoCliente(c.estado)}>{labelDe(ESTADOS, c.estado)}</Badge></td>
                   <td>{c.ciudad ?? '—'}</td>

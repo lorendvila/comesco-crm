@@ -10,9 +10,12 @@ import {
   createOportunidad,
   updateOportunidad,
   moverOportunidadEtapa,
-  deleteOportunidad,
+  archivarOportunidad,
+  restaurarOportunidad,
 } from '../../data/oportunidades'
 import type { OportunidadConCliente, OportunidadConLineas } from '../../data/oportunidades'
+import { useAuth } from '../../auth/AuthProvider'
+import { permisos } from '../../auth/permisos'
 import {
   OportunidadForm,
   CAB_OPORTUNIDAD_VACIA,
@@ -23,6 +26,8 @@ import {
 type Modal = { mode: 'new' } | { mode: 'edit'; op: OportunidadConLineas } | null
 
 export function PipelinePage() {
+  const { profile } = useAuth()
+  const puedeGestionar = permisos.manageClientes(profile) // oportunidades = capacidad de clientes
   const [ops, setOps] = useState<OportunidadConCliente[]>([])
   const [clientes, setClientes] = useState<ClienteResumen[]>([])
   const [referencias, setReferencias] = useState<ReferenciaResumen[]>([])
@@ -31,10 +36,11 @@ export function PipelinePage() {
   const [modal, setModal] = useState<Modal>(null)
   const [dragId, setDragId] = useState<string | null>(null)
   const [dragOver, setDragOver] = useState<string | null>(null)
+  const [verArchivadas, setVerArchivadas] = useState(false)
 
   const cargar = () => {
     setLoading(true)
-    Promise.all([listOportunidades(), listClientes(), listReferencias()])
+    Promise.all([listOportunidades(verArchivadas), listClientes(), listReferencias()])
       .then(([o, c, r]) => {
         setOps(o)
         setClientes(c)
@@ -44,7 +50,7 @@ export function PipelinePage() {
       .finally(() => setLoading(false))
   }
 
-  useEffect(cargar, [])
+  useEffect(cargar, [verArchivadas])
 
   const resumen = useMemo(() => {
     const abiertas = ops.filter((o) => ETAPAS_ABIERTAS.includes(o.etapa))
@@ -87,9 +93,17 @@ export function PipelinePage() {
     <div className="stack stack-6">
       <div className="page-header">
         <h1 className="t-display">Pipeline</h1>
-        <button className="btn btn-primary" onClick={() => setModal({ mode: 'new' })}>
-          Nueva oportunidad
-        </button>
+        <div className="cluster cluster-3">
+          {puedeGestionar && (
+            <label className="cluster cluster-1" style={{ alignItems: 'center' }}>
+              <input type="checkbox" checked={verArchivadas} onChange={(e) => setVerArchivadas(e.target.checked)} />
+              <span className="t-body-sm">Mostrar archivadas</span>
+            </label>
+          )}
+          <button className="btn btn-primary" onClick={() => setModal({ mode: 'new' })}>
+            Nueva oportunidad
+          </button>
+        </div>
       </div>
 
       <div className="summary-row">
@@ -137,18 +151,22 @@ export function PipelinePage() {
                     </span>
                   </div>
 
-                  {enEtapa.map((o) => (
+                  {enEtapa.map((o) => {
+                    const archivada = o.deleted_at != null
+                    return (
                     <div
                       key={o.id}
                       className={'oportunidad-card' + (dragId === o.id ? ' oportunidad-card--dragging' : '')}
-                      draggable
-                      onDragStart={() => setDragId(o.id)}
+                      draggable={!archivada}
+                      style={archivada ? { opacity: 0.6 } : undefined}
+                      onDragStart={() => !archivada && setDragId(o.id)}
                       onDragEnd={() => {
                         setDragId(null)
                         setDragOver(null)
                       }}
                     >
                       <span className="t-body">{o.clientes?.nombre ?? '—'}</span>
+                      {archivada && <span className="badge">Archivada</span>}
                       <div className="cluster cluster-2">
                         <span className="t-sub">{formatCOP(o.valor_estimado)}/mes</span>
                         {o.probabilidad_cierre != null && (
@@ -160,9 +178,15 @@ export function PipelinePage() {
                         <button className="btn btn-sm btn-outline" onClick={() => abrirEdicion(o.id)}>
                           Editar
                         </button>
+                        {archivada && puedeGestionar && (
+                          <button className="btn btn-sm btn-outline" onClick={async () => { await restaurarOportunidad(o.id); cargar() }}>
+                            Restaurar
+                          </button>
+                        )}
                       </div>
                     </div>
-                  ))}
+                    )
+                  })}
                   {enEtapa.length === 0 && (
                     <p className="pipeline-col__empty t-caption">Arrastra aquí</p>
                   )}
@@ -193,10 +217,10 @@ export function PipelinePage() {
                 setModal(null)
                 cargar()
               }}
-              onDelete={
-                modal.mode === 'edit'
+              onArchive={
+                modal.mode === 'edit' && puedeGestionar
                   ? async () => {
-                      await deleteOportunidad(modal.op.id)
+                      await archivarOportunidad(modal.op.id)
                       setModal(null)
                       cargar()
                     }

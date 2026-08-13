@@ -13,16 +13,31 @@ export interface ClienteResumen {
   ciudad: string | null
   direccion_entrega: string | null
   comercial_asignado_id: string | null
+  deleted_at: string | null
 }
 
-export async function listClientes(): Promise<ClienteResumen[]> {
-  const { data, error } = await supabase
+// Por defecto solo los operativos (no archivados). `incluirArchivados` los trae
+// todos, para la vista de gestión con el toggle "mostrar archivados".
+export async function listClientes(incluirArchivados = false): Promise<ClienteResumen[]> {
+  let q = supabase
     .from('clientes')
-    .select('id, codigo_interno, nombre, canal, estado, ciudad, direccion_entrega, comercial_asignado_id')
-    .is('deleted_at', null)
+    .select('id, codigo_interno, nombre, canal, estado, ciudad, direccion_entrega, comercial_asignado_id, deleted_at')
     .order('codigo_interno')
+  if (!incluirArchivados) q = q.is('deleted_at', null)
+  const { data, error } = await q
   if (error) throw error
   return data ?? []
+}
+
+// Archivar (soft-delete) / restaurar. La BD (mig 0029) solo lo permite a
+// Backoffice/Superadmin; un comercial recibe error aunque llame la API directa.
+export async function archivarCliente(id: string): Promise<void> {
+  const { error } = await supabase.from('clientes').update({ deleted_at: new Date().toISOString() }).eq('id', id)
+  if (error) throw error
+}
+export async function restaurarCliente(id: string): Promise<void> {
+  const { error } = await supabase.from('clientes').update({ deleted_at: null }).eq('id', id)
+  if (error) throw error
 }
 
 export async function getCliente(id: string): Promise<Cliente> {

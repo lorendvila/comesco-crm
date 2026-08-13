@@ -429,6 +429,7 @@ export type Database = {
           cliente_id: string
           comision_pct: number | null
           created_at: string | null
+          deleted_at: string | null
           etapa: string
           fecha_cierre: string | null
           fecha_inicio_suministro: string | null
@@ -443,6 +444,7 @@ export type Database = {
           cliente_id: string
           comision_pct?: number | null
           created_at?: string | null
+          deleted_at?: string | null
           etapa?: string
           fecha_cierre?: string | null
           fecha_inicio_suministro?: string | null
@@ -457,6 +459,7 @@ export type Database = {
           cliente_id?: string
           comision_pct?: number | null
           created_at?: string | null
+          deleted_at?: string | null
           etapa?: string
           fecha_cierre?: string | null
           fecha_inicio_suministro?: string | null

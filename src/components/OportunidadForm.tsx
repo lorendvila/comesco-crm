@@ -100,7 +100,7 @@ interface Props {
   submitLabel: string
   onSubmit: (data: { cabecera: TablesInsert<'oportunidades'>; lineas: LineaOportunidadInput[] }) => Promise<void>
   onCancel: () => void
-  onDelete?: () => Promise<void>
+  onArchive?: () => Promise<void>
 }
 
 export function OportunidadForm({
@@ -112,7 +112,7 @@ export function OportunidadForm({
   submitLabel,
   onSubmit,
   onCancel,
-  onDelete,
+  onArchive,
 }: Props) {
   const [cab, setCab] = useState<CabeceraOportunidadState>(initialCab)
   const [lineas, setLineas] = useState<LineaOportunidadState[]>(
@@ -347,16 +347,16 @@ export function OportunidadForm({
             Cancelar
           </button>
         </div>
-        {onDelete && (
+        {onArchive && (
           <button
             className="btn btn-outline btn-sm"
             type="button"
             disabled={saving}
             onClick={async () => {
-              if (confirm('¿Borrar esta oportunidad?')) await onDelete()
+              if (confirm('¿Archivar esta oportunidad? Se retira de la operativa; podrás restaurarla después.')) await onArchive()
             }}
           >
-            Borrar
+            Archivar
           </button>
         )}
       </div>

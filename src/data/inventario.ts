@@ -23,6 +23,7 @@ export interface InventarioFila {
   contenedor: string | null
   notas: string | null
   actualizado_at: string | null
+  descatalogada: boolean // referencia con deleted_at (fuera del catálogo operativo)
 }
 
 interface ReferenciaRaw {
@@ -35,6 +36,7 @@ interface ReferenciaRaw {
   precio_food_service_cop: number | null
   precio_retail_cop: number | null
   precio_industria_cop: number | null
+  deleted_at: string | null
 }
 
 interface InventarioRecord {
@@ -50,15 +52,15 @@ interface InventarioRecord {
 
 // Cruce referencia × almacén: una fila por cada combinación, con su stock si
 // existe (0 si no). Así se ve qué hay —y qué falta— en cada ciudad.
-export async function listInventario(): Promise<InventarioFila[]> {
+export async function listInventario(incluirDescatalogadas = false): Promise<InventarioFila[]> {
+  let refsQuery = supabase
+    .from('referencias')
+    .select('id, codigo_interno, sku, nombre_producto, formato, categoria, precio_food_service_cop, precio_retail_cop, precio_industria_cop, deleted_at')
+    .eq('es_servicio', false) // Transporte/Otros no tienen inventario
+    .order('nombre_producto')
+  if (!incluirDescatalogadas) refsQuery = refsQuery.is('deleted_at', null)
   const [refsRes, invRes, almacenes, costes] = await Promise.all([
-    supabase
-      .from('referencias')
-      .select('id, codigo_interno, sku, nombre_producto, formato, categoria, precio_food_service_cop, precio_retail_cop, precio_industria_cop')
-      .is('deleted_at', null)
-      .eq('es_servicio', false) // Transporte/Otros no tienen inventario
-      .order('nombre_producto')
-      .returns<ReferenciaRaw[]>(),
+    refsQuery.returns<ReferenciaRaw[]>(),
     supabase
       .from('inventario')
       .select('id, referencia_id, almacen_id, cantidad_disponible, ubicacion, contenedor, notas, actualizado_at')
@@ -95,6 +97,7 @@ export async function listInventario(): Promise<InventarioFila[]> {
         contenedor: rec?.contenedor ?? null,
         notas: rec?.notas ?? null,
         actualizado_at: rec?.actualizado_at ?? null,
+        descatalogada: r.deleted_at != null,
       })
     }
   }
