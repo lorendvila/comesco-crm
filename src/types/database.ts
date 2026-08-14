@@ -10,7 +10,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.5"
+    PostgrestVersion: "14.15"
   }
   public: {
     Tables: {
@@ -319,6 +319,36 @@ export type Database = {
           },
         ]
       }
+      importacion_tipos_coste: {
+        Row: {
+          activo: boolean
+          capitalizable: boolean
+          codigo: string
+          criterio_reparto_default: string
+          naturaleza: string
+          nombre: string
+          orden: number | null
+        }
+        Insert: {
+          activo?: boolean
+          capitalizable?: boolean
+          codigo: string
+          criterio_reparto_default?: string
+          naturaleza?: string
+          nombre: string
+          orden?: number | null
+        }
+        Update: {
+          activo?: boolean
+          capitalizable?: boolean
+          codigo?: string
+          criterio_reparto_default?: string
+          naturaleza?: string
+          nombre?: string
+          orden?: number | null
+        }
+        Relationships: []
+      }
       inventario: {
         Row: {
           actualizado_at: string | null
@@ -369,6 +399,102 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      operador_roles: {
+        Row: {
+          created_at: string | null
+          operador_id: string
+          rol_codigo: string
+        }
+        Insert: {
+          created_at?: string | null
+          operador_id: string
+          rol_codigo: string
+        }
+        Update: {
+          created_at?: string | null
+          operador_id?: string
+          rol_codigo?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "operador_roles_operador_id_fkey"
+            columns: ["operador_id"]
+            isOneToOne: false
+            referencedRelation: "operadores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "operador_roles_rol_codigo_fkey"
+            columns: ["rol_codigo"]
+            isOneToOne: false
+            referencedRelation: "operador_tipos_rol"
+            referencedColumns: ["codigo"]
+          },
+        ]
+      }
+      operador_tipos_rol: {
+        Row: {
+          activo: boolean
+          codigo: string
+          nombre: string
+          orden: number | null
+        }
+        Insert: {
+          activo?: boolean
+          codigo: string
+          nombre: string
+          orden?: number | null
+        }
+        Update: {
+          activo?: boolean
+          codigo?: string
+          nombre?: string
+          orden?: number | null
+        }
+        Relationships: []
+      }
+      operadores: {
+        Row: {
+          activo: boolean
+          created_at: string | null
+          email: string | null
+          id: string
+          nit: string | null
+          nombre: string
+          notas: string | null
+          pais: string | null
+          telefono: string | null
+          updated_at: string | null
+          web: string | null
+        }
+        Insert: {
+          activo?: boolean
+          created_at?: string | null
+          email?: string | null
+          id?: string
+          nit?: string | null
+          nombre: string
+          notas?: string | null
+          pais?: string | null
+          telefono?: string | null
+          updated_at?: string | null
+          web?: string | null
+        }
+        Update: {
+          activo?: boolean
+          created_at?: string | null
+          email?: string | null
+          id?: string
+          nit?: string | null
+          nombre?: string
+          notas?: string | null
+          pais?: string | null
+          telefono?: string | null
+          updated_at?: string | null
+          web?: string | null
+        }
+        Relationships: []
       }
       oportunidad_lineas: {
         Row: {
@@ -633,18 +759,18 @@ export type Database = {
       }
       referencia_costes: {
         Row: {
-          referencia_id: string
           coste_almacen_cop: number | null
+          referencia_id: string
           updated_at: string | null
         }
         Insert: {
-          referencia_id: string
           coste_almacen_cop?: number | null
+          referencia_id: string
           updated_at?: string | null
         }
         Update: {
-          referencia_id?: string
           coste_almacen_cop?: number | null
+          referencia_id?: string
           updated_at?: string | null
         }
         Relationships: [
@@ -774,6 +900,33 @@ export type Database = {
           },
         ]
       }
+      tipos_cambio: {
+        Row: {
+          created_at: string | null
+          fecha: string
+          fuente: string | null
+          id: string
+          par: string
+          tipo: number
+        }
+        Insert: {
+          created_at?: string | null
+          fecha: string
+          fuente?: string | null
+          id?: string
+          par?: string
+          tipo: number
+        }
+        Update: {
+          created_at?: string | null
+          fecha?: string
+          fuente?: string | null
+          id?: string
+          par?: string
+          tipo?: number
+        }
+        Relationships: []
+      }
       users: {
         Row: {
           auth_user_id: string
@@ -812,7 +965,22 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      app_role: { Args: never; Returns: string }
+      can_access_importaciones: { Args: never; Returns: boolean }
+      can_manage_clientes: { Args: never; Returns: boolean }
+      can_manage_facturacion: { Args: never; Returns: boolean }
+      can_manage_importaciones: { Args: never; Returns: boolean }
+      can_manage_importaciones_config: { Args: never; Returns: boolean }
+      can_manage_inventario: { Args: never; Returns: boolean }
+      can_manage_pedidos: { Args: never; Returns: boolean }
+      can_manage_privileged: { Args: never; Returns: boolean }
+      can_manage_referencias: { Args: never; Returns: boolean }
+      can_manage_users: { Args: never; Returns: boolean }
+      can_read_all: { Args: never; Returns: boolean }
+      can_see_costs: { Args: never; Returns: boolean }
       current_user_id: { Args: never; Returns: string }
+      is_superadmin: { Args: never; Returns: boolean }
+      pedido_consume_stock: { Args: { est: string }; Returns: boolean }
       siguiente_numero_pedido: { Args: never; Returns: string }
     }
     Enums: {

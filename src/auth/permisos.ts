@@ -39,6 +39,13 @@ export const permisos = {
   // Crear/gestionar usuarios comerciales.
   manageUsers: (p: PerfilMin | null | undefined) => has(p, ['superadmin', 'backoffice']),
 
+  // Módulo Importaciones. Acceso (lectura): super/dirección/backoffice. Comercial NO.
+  accessImportaciones: (p: PerfilMin | null | undefined) => has(p, ['superadmin', 'direccion', 'backoffice']),
+  // Operar Importaciones (crear/editar, confirmar recepciones): super/backoffice. Dirección NO opera.
+  manageImportaciones: (p: PerfilMin | null | undefined) => has(p, ['superadmin', 'backoffice']),
+  // Configuración crítica del módulo (serie de TC, Gmail/automatización). Solo superadmin.
+  manageImportacionesConfig: (p: PerfilMin | null | undefined) => has(p, ['superadmin']),
+
   // Crear/editar roles no-comerciales y configuración crítica. Solo superadmin.
   managePrivileged: (p: PerfilMin | null | undefined) => has(p, ['superadmin']),
 

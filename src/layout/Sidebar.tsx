@@ -2,9 +2,12 @@ import { NavLink } from 'react-router-dom'
 import { useAuth } from '../auth/AuthProvider'
 import { permisos } from '../auth/permisos'
 
+// `cap` = capacidad requerida para ver la entrada (clave de `permisos`). Si no
+// se indica, la entrada es visible para cualquier usuario con sesión.
+type Cap = keyof typeof permisos
 type NavEntry =
-  | { type: 'link'; to: string; label: string; end?: boolean; adminOnly?: boolean }
-  | { type: 'group'; label: string; items: { to: string; label: string }[] }
+  | { type: 'link'; to: string; label: string; end?: boolean; adminOnly?: boolean; cap?: Cap }
+  | { type: 'group'; label: string; cap?: Cap; items: { to: string; label: string }[] }
 
 // Barra lateral = destinos. Agrupados en Comercial (seguimiento) y Operaciones.
 // Los detalles de un cliente (condiciones, contactos...) viven en su ficha.
@@ -27,6 +30,12 @@ const NAV: NavEntry[] = [
       { to: '/inventario', label: 'Inventario' },
     ],
   },
+  {
+    type: 'group',
+    label: 'Importaciones',
+    cap: 'accessImportaciones', // super/dirección/backoffice; comercial no lo ve
+    items: [{ to: '/importaciones', label: 'Importaciones' }],
+  },
   { type: 'link', to: '/informes', label: 'Informes' },
   { type: 'link', to: '/usuarios', label: 'Usuarios', adminOnly: true },
 ]
@@ -37,7 +46,12 @@ const itemClass = ({ isActive }: { isActive: boolean }) =>
 export function Sidebar({ open = false, onNavigate }: { open?: boolean; onNavigate?: () => void }) {
   const { profile } = useAuth()
   // `adminOnly` = requiere gestión de usuarios (Usuarios). Superadmin/backoffice.
-  const nav = NAV.filter((e) => e.type !== 'link' || !e.adminOnly || permisos.manageUsers(profile))
+  // `cap` = capacidad requerida (p.ej. accessImportaciones); si no la cumple, se oculta.
+  const nav = NAV.filter((e) => {
+    if (e.type === 'link' && e.adminOnly && !permisos.manageUsers(profile)) return false
+    if (e.cap && !permisos[e.cap](profile)) return false
+    return true
+  })
   return (
     <aside className={'sidebar' + (open ? ' sidebar--open' : '')}>
       <div className="sidebar__brand">

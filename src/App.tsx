@@ -1,6 +1,7 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { LoginPage } from './auth/LoginPage'
 import { ProtectedRoute } from './auth/ProtectedRoute'
+import { RequireCap } from './auth/RequireCap'
 import { AppShell } from './layout/AppShell'
 import { PlaceholderPage } from './pages/PlaceholderPage'
 import { ClientesListPage } from './pages/clientes/ClientesListPage'
@@ -10,6 +11,7 @@ import { PipelinePage } from './pages/pipeline/PipelinePage'
 import { SeguimientoPage } from './pages/seguimiento/SeguimientoPage'
 import { PedidosPage } from './pages/pedidos/PedidosPage'
 import { InventarioPage } from './pages/inventario/InventarioPage'
+import { ImportacionesPage } from './pages/importaciones/ImportacionesPage'
 import { DashboardPage } from './pages/dashboard/DashboardPage'
 import { InformesPage } from './pages/informes/InformesPage'
 import { UsuariosPage } from './pages/usuarios/UsuariosPage'
@@ -28,6 +30,14 @@ export default function App() {
           <Route path="seguimiento" element={<SeguimientoPage />} />
           <Route path="pedidos" element={<PedidosPage />} />
           <Route path="inventario" element={<InventarioPage />} />
+          <Route
+            path="importaciones"
+            element={
+              <RequireCap cap="accessImportaciones">
+                <ImportacionesPage />
+              </RequireCap>
+            }
+          />
           <Route path="informes" element={<InformesPage />} />
           <Route path="usuarios" element={<UsuariosPage />} />
         </Route>
