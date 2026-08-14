@@ -162,11 +162,14 @@ const dFmt = new Intl.DateTimeFormat('es-CO', { dateStyle: 'medium' })
 // Fecha + hora (para timestamptz, p. ej. actividades.fecha)
 export function formatFechaHora(iso: string | null): string {
   if (!iso) return '—'
-  return dtFmt.format(new Date(iso))
+  const d = new Date(iso)
+  return isNaN(d.getTime()) ? '—' : dtFmt.format(d)
 }
 
-// Solo fecha (para columnas DATE, p. ej. tareas.fecha_limite = "YYYY-MM-DD")
+// Solo fecha. Acepta columnas DATE ("YYYY-MM-DD") y también timestamptz; nunca
+// lanza (un valor inesperado devuelve '—' en lugar de romper el render).
 export function formatFecha(fecha: string | null): string {
   if (!fecha) return '—'
-  return dFmt.format(new Date(fecha + 'T00:00:00'))
+  const d = fecha.length === 10 ? new Date(fecha + 'T00:00:00') : new Date(fecha)
+  return isNaN(d.getTime()) ? '—' : dFmt.format(d)
 }

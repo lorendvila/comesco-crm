@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../auth/AuthProvider'
 import { permisos } from '../../auth/permisos'
-import { formatFecha } from '../../data/constants'
+import { formatFecha, formatFechaHora } from '../../data/constants'
 import { listReferencias } from '../../data/referencias'
 import type { ReferenciaResumen } from '../../data/referencias'
 import { listAlmacenes } from '../../data/almacenes'
@@ -396,7 +396,7 @@ function TabDocumentos({ impId, puedeGestionar, onError }: { impId: string; pued
                     </select>
                   ) : (<span className="badge">{d.estado}</span>)}
                 </td>
-                <td>{formatFecha(d.created_at)}</td>
+                <td>{d.fecha ? formatFecha(d.fecha) : formatFechaHora(d.created_at)}</td>
                 <td>{puedeGestionar && <button className="btn btn-secondary" onClick={() => eliminar(d)}>{d.validado_at ? 'Archivar' : 'Quitar'}</button>}</td>
               </tr>
             ))}
