@@ -319,6 +319,237 @@ export type Database = {
           },
         ]
       }
+      importacion_documentos: {
+        Row: {
+          created_at: string | null
+          deleted_at: string | null
+          estado: string
+          fecha: string | null
+          id: string
+          importacion_id: string
+          mime_type: string | null
+          nombre_archivo: string | null
+          notas: string | null
+          operador_id: string | null
+          reemplaza_a: string | null
+          storage_bucket: string
+          storage_path: string | null
+          subido_por: string | null
+          tamano_bytes: number | null
+          tipo_codigo: string | null
+          updated_at: string | null
+          validado_at: string | null
+          validado_por: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          deleted_at?: string | null
+          estado?: string
+          fecha?: string | null
+          id?: string
+          importacion_id: string
+          mime_type?: string | null
+          nombre_archivo?: string | null
+          notas?: string | null
+          operador_id?: string | null
+          reemplaza_a?: string | null
+          storage_bucket?: string
+          storage_path?: string | null
+          subido_por?: string | null
+          tamano_bytes?: number | null
+          tipo_codigo?: string | null
+          updated_at?: string | null
+          validado_at?: string | null
+          validado_por?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          deleted_at?: string | null
+          estado?: string
+          fecha?: string | null
+          id?: string
+          importacion_id?: string
+          mime_type?: string | null
+          nombre_archivo?: string | null
+          notas?: string | null
+          operador_id?: string | null
+          reemplaza_a?: string | null
+          storage_bucket?: string
+          storage_path?: string | null
+          subido_por?: string | null
+          tamano_bytes?: number | null
+          tipo_codigo?: string | null
+          updated_at?: string | null
+          validado_at?: string | null
+          validado_por?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "importacion_documentos_importacion_id_fkey"
+            columns: ["importacion_id"]
+            isOneToOne: false
+            referencedRelation: "importaciones"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "importacion_documentos_operador_id_fkey"
+            columns: ["operador_id"]
+            isOneToOne: false
+            referencedRelation: "operadores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "importacion_documentos_reemplaza_a_fkey"
+            columns: ["reemplaza_a"]
+            isOneToOne: false
+            referencedRelation: "importacion_documentos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "importacion_documentos_subido_por_fkey"
+            columns: ["subido_por"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "importacion_documentos_tipo_codigo_fkey"
+            columns: ["tipo_codigo"]
+            isOneToOne: false
+            referencedRelation: "importacion_tipos_documento"
+            referencedColumns: ["codigo"]
+          },
+          {
+            foreignKeyName: "importacion_documentos_validado_por_fkey"
+            columns: ["validado_por"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      importacion_lineas: {
+        Row: {
+          cajas: number | null
+          cantidad_unidades: number
+          created_at: string | null
+          id: string
+          importacion_id: string
+          importe_mercancia: number | null
+          moneda: string
+          notas: string | null
+          operador_proveedor_id: string | null
+          pallets: number | null
+          peso_kg: number | null
+          precio_compra: number
+          referencia_id: string
+          updated_at: string | null
+          volumen_m3: number | null
+        }
+        Insert: {
+          cajas?: number | null
+          cantidad_unidades: number
+          created_at?: string | null
+          id?: string
+          importacion_id: string
+          importe_mercancia?: number | null
+          moneda?: string
+          notas?: string | null
+          operador_proveedor_id?: string | null
+          pallets?: number | null
+          peso_kg?: number | null
+          precio_compra: number
+          referencia_id: string
+          updated_at?: string | null
+          volumen_m3?: number | null
+        }
+        Update: {
+          cajas?: number | null
+          cantidad_unidades?: number
+          created_at?: string | null
+          id?: string
+          importacion_id?: string
+          importe_mercancia?: number | null
+          moneda?: string
+          notas?: string | null
+          operador_proveedor_id?: string | null
+          pallets?: number | null
+          peso_kg?: number | null
+          precio_compra?: number
+          referencia_id?: string
+          updated_at?: string | null
+          volumen_m3?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "importacion_lineas_importacion_id_fkey"
+            columns: ["importacion_id"]
+            isOneToOne: false
+            referencedRelation: "importaciones"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "importacion_lineas_operador_proveedor_id_fkey"
+            columns: ["operador_proveedor_id"]
+            isOneToOne: false
+            referencedRelation: "operadores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "importacion_lineas_referencia_id_fkey"
+            columns: ["referencia_id"]
+            isOneToOne: false
+            referencedRelation: "referencias"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      importacion_operadores: {
+        Row: {
+          created_at: string | null
+          importacion_id: string
+          notas: string | null
+          operador_id: string
+          rol_codigo: string
+        }
+        Insert: {
+          created_at?: string | null
+          importacion_id: string
+          notas?: string | null
+          operador_id: string
+          rol_codigo: string
+        }
+        Update: {
+          created_at?: string | null
+          importacion_id?: string
+          notas?: string | null
+          operador_id?: string
+          rol_codigo?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "importacion_operadores_importacion_id_fkey"
+            columns: ["importacion_id"]
+            isOneToOne: false
+            referencedRelation: "importaciones"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "importacion_operadores_operador_id_fkey"
+            columns: ["operador_id"]
+            isOneToOne: false
+            referencedRelation: "operadores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "importacion_operadores_rol_codigo_fkey"
+            columns: ["rol_codigo"]
+            isOneToOne: false
+            referencedRelation: "operador_tipos_rol"
+            referencedColumns: ["codigo"]
+          },
+        ]
+      }
       importacion_tipos_coste: {
         Row: {
           activo: boolean
@@ -348,6 +579,120 @@ export type Database = {
           orden?: number | null
         }
         Relationships: []
+      }
+      importacion_tipos_documento: {
+        Row: {
+          activo: boolean
+          codigo: string
+          nombre: string
+          orden: number | null
+        }
+        Insert: {
+          activo?: boolean
+          codigo: string
+          nombre: string
+          orden?: number | null
+        }
+        Update: {
+          activo?: boolean
+          codigo?: string
+          nombre?: string
+          orden?: number | null
+        }
+        Relationships: []
+      }
+      importaciones: {
+        Row: {
+          almacen_destino_id: string | null
+          bl: string | null
+          booking: string | null
+          codigo: string | null
+          contenedor: string | null
+          created_at: string | null
+          created_by: string | null
+          deleted_at: string | null
+          destino: string | null
+          estado_coste: string
+          estado_logistico: string
+          eta_prevista: string | null
+          eta_real: string | null
+          etd_prevista: string | null
+          etd_real: string | null
+          id: string
+          incoterm: string | null
+          modalidad_transporte: string | null
+          moneda: string
+          observaciones: string | null
+          origen: string | null
+          tc_presupuestado: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          almacen_destino_id?: string | null
+          bl?: string | null
+          booking?: string | null
+          codigo?: string | null
+          contenedor?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          deleted_at?: string | null
+          destino?: string | null
+          estado_coste?: string
+          estado_logistico?: string
+          eta_prevista?: string | null
+          eta_real?: string | null
+          etd_prevista?: string | null
+          etd_real?: string | null
+          id?: string
+          incoterm?: string | null
+          modalidad_transporte?: string | null
+          moneda?: string
+          observaciones?: string | null
+          origen?: string | null
+          tc_presupuestado?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          almacen_destino_id?: string | null
+          bl?: string | null
+          booking?: string | null
+          codigo?: string | null
+          contenedor?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          deleted_at?: string | null
+          destino?: string | null
+          estado_coste?: string
+          estado_logistico?: string
+          eta_prevista?: string | null
+          eta_real?: string | null
+          etd_prevista?: string | null
+          etd_real?: string | null
+          id?: string
+          incoterm?: string | null
+          modalidad_transporte?: string | null
+          moneda?: string
+          observaciones?: string | null
+          origen?: string | null
+          tc_presupuestado?: number | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "importaciones_almacen_destino_id_fkey"
+            columns: ["almacen_destino_id"]
+            isOneToOne: false
+            referencedRelation: "almacenes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "importaciones_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       inventario: {
         Row: {
@@ -396,6 +741,101 @@ export type Database = {
             columns: ["referencia_id"]
             isOneToOne: false
             referencedRelation: "referencias"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      operador_documentos: {
+        Row: {
+          created_at: string | null
+          deleted_at: string | null
+          estado: string
+          fecha_caducidad: string | null
+          fecha_emision: string | null
+          id: string
+          mime_type: string | null
+          nombre_archivo: string | null
+          notas: string | null
+          operador_id: string
+          reemplaza_a: string | null
+          storage_bucket: string
+          storage_path: string | null
+          subido_por: string | null
+          tamano_bytes: number | null
+          tipo: string | null
+          updated_at: string | null
+          validado_at: string | null
+          validado_por: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          deleted_at?: string | null
+          estado?: string
+          fecha_caducidad?: string | null
+          fecha_emision?: string | null
+          id?: string
+          mime_type?: string | null
+          nombre_archivo?: string | null
+          notas?: string | null
+          operador_id: string
+          reemplaza_a?: string | null
+          storage_bucket?: string
+          storage_path?: string | null
+          subido_por?: string | null
+          tamano_bytes?: number | null
+          tipo?: string | null
+          updated_at?: string | null
+          validado_at?: string | null
+          validado_por?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          deleted_at?: string | null
+          estado?: string
+          fecha_caducidad?: string | null
+          fecha_emision?: string | null
+          id?: string
+          mime_type?: string | null
+          nombre_archivo?: string | null
+          notas?: string | null
+          operador_id?: string
+          reemplaza_a?: string | null
+          storage_bucket?: string
+          storage_path?: string | null
+          subido_por?: string | null
+          tamano_bytes?: number | null
+          tipo?: string | null
+          updated_at?: string | null
+          validado_at?: string | null
+          validado_por?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "operador_documentos_operador_id_fkey"
+            columns: ["operador_id"]
+            isOneToOne: false
+            referencedRelation: "operadores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "operador_documentos_reemplaza_a_fkey"
+            columns: ["reemplaza_a"]
+            isOneToOne: false
+            referencedRelation: "operador_documentos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "operador_documentos_subido_por_fkey"
+            columns: ["subido_por"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "operador_documentos_validado_por_fkey"
+            columns: ["validado_por"]
+            isOneToOne: false
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]
@@ -981,6 +1421,7 @@ export type Database = {
       current_user_id: { Args: never; Returns: string }
       is_superadmin: { Args: never; Returns: boolean }
       pedido_consume_stock: { Args: { est: string }; Returns: boolean }
+      siguiente_codigo_importacion: { Args: never; Returns: string }
       siguiente_numero_pedido: { Args: never; Returns: string }
     }
     Enums: {

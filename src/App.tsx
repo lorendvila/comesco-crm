@@ -12,6 +12,8 @@ import { SeguimientoPage } from './pages/seguimiento/SeguimientoPage'
 import { PedidosPage } from './pages/pedidos/PedidosPage'
 import { InventarioPage } from './pages/inventario/InventarioPage'
 import { ImportacionesPage } from './pages/importaciones/ImportacionesPage'
+import { ImportacionFichaPage } from './pages/importaciones/ImportacionFichaPage'
+import { OperadoresPage } from './pages/importaciones/OperadoresPage'
 import { DashboardPage } from './pages/dashboard/DashboardPage'
 import { InformesPage } from './pages/informes/InformesPage'
 import { UsuariosPage } from './pages/usuarios/UsuariosPage'
@@ -35,6 +37,22 @@ export default function App() {
             element={
               <RequireCap cap="accessImportaciones">
                 <ImportacionesPage />
+              </RequireCap>
+            }
+          />
+          <Route
+            path="importaciones/operadores"
+            element={
+              <RequireCap cap="accessImportaciones">
+                <OperadoresPage />
+              </RequireCap>
+            }
+          />
+          <Route
+            path="importaciones/:id"
+            element={
+              <RequireCap cap="accessImportaciones">
+                <ImportacionFichaPage />
               </RequireCap>
             }
           />

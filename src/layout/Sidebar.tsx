@@ -34,7 +34,10 @@ const NAV: NavEntry[] = [
     type: 'group',
     label: 'Importaciones',
     cap: 'accessImportaciones', // super/dirección/backoffice; comercial no lo ve
-    items: [{ to: '/importaciones', label: 'Importaciones' }],
+    items: [
+      { to: '/importaciones', label: 'Importaciones' },
+      { to: '/importaciones/operadores', label: 'Operadores' },
+    ],
   },
   { type: 'link', to: '/informes', label: 'Informes' },
   { type: 'link', to: '/usuarios', label: 'Usuarios', adminOnly: true },
