@@ -18,9 +18,10 @@ import {
 import type {
   Importacion, ImportacionLinea, ImportacionOperador, DocumentoImportacion, Operador, TipoRolOperador, TipoDocumento,
 } from '../../data/importaciones'
+import { TabCostes, TabAnticipos, ResumenIndicadoresI2 } from './TabsI2'
 
-const TABS = ['Resumen', 'Mercancía', 'Operadores', 'Logística', 'Documentación'] as const
-const TABS_PENDIENTES = ['Costes', 'Anticipos', 'Incidencias', 'Recepciones'] as const
+const TABS = ['Resumen', 'Mercancía', 'Costes', 'Operadores', 'Logística', 'Documentación', 'Anticipos'] as const
+const TABS_PENDIENTES = ['Incidencias', 'Recepciones'] as const
 type Tab = (typeof TABS)[number]
 
 const num = (s: string): number | null => {
@@ -105,9 +106,11 @@ export function ImportacionFichaPage() {
 
       {tab === 'Resumen' && <TabResumen imp={imp} />}
       {tab === 'Mercancía' && <TabMercancia impId={imp.id} editable={editable} onError={setError} />}
+      {tab === 'Costes' && <TabCostes imp={imp} puedeGestionar={puedeGestionar} onError={setError} />}
       {tab === 'Operadores' && <TabOperadores impId={imp.id} puedeGestionar={puedeGestionar} onError={setError} />}
       {tab === 'Logística' && <TabLogistica imp={imp} puedeGestionar={puedeGestionar} onSaved={recargar} onError={setError} />}
       {tab === 'Documentación' && <TabDocumentos impId={imp.id} puedeGestionar={puedeGestionar} onError={setError} />}
+      {tab === 'Anticipos' && <TabAnticipos impId={imp.id} puedeGestionar={puedeGestionar} onError={setError} />}
     </div>
   )
 }
@@ -123,14 +126,17 @@ function TabResumen({ imp }: { imp: Importacion }) {
     ['Booking', imp.booking ?? '—'], ['BL', imp.bl ?? '—'], ['Contenedor', imp.contenedor ?? '—'],
   ]
   return (
-    <div className="card stack stack-3">
-      <h2 className="t-heading">Resumen</h2>
-      <div className="table-wrap">
-        <table className="data-table">
-          <tbody>{filas.map(([k, v]) => (<tr key={k}><th style={{ width: 200 }}>{k}</th><td>{v}</td></tr>))}</tbody>
-        </table>
+    <div className="stack stack-4">
+      <div className="card stack stack-3">
+        <h2 className="t-heading">Resumen</h2>
+        <div className="table-wrap">
+          <table className="data-table">
+            <tbody>{filas.map(([k, v]) => (<tr key={k}><th style={{ width: 200 }}>{k}</th><td>{v}</td></tr>))}</tbody>
+          </table>
+        </div>
+        {imp.observaciones && <p className="t-body-sm">{imp.observaciones}</p>}
       </div>
-      {imp.observaciones && <p className="t-body-sm">{imp.observaciones}</p>}
+      <ResumenIndicadoresI2 impId={imp.id} />
     </div>
   )
 }

@@ -319,6 +319,316 @@ export type Database = {
           },
         ]
       }
+      importacion_anticipos: {
+        Row: {
+          concepto: string | null
+          coste_id: string | null
+          created_at: string | null
+          created_by: string | null
+          deleted_at: string | null
+          documento_id: string | null
+          estado: string
+          fecha_pago: string | null
+          fecha_solicitud: string | null
+          id: string
+          importacion_id: string
+          importe: number
+          importe_cop: number | null
+          importe_utilizado: number
+          moneda: string
+          notas: string | null
+          operador_id: string | null
+          tc: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          concepto?: string | null
+          coste_id?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          deleted_at?: string | null
+          documento_id?: string | null
+          estado?: string
+          fecha_pago?: string | null
+          fecha_solicitud?: string | null
+          id?: string
+          importacion_id: string
+          importe: number
+          importe_cop?: number | null
+          importe_utilizado?: number
+          moneda?: string
+          notas?: string | null
+          operador_id?: string | null
+          tc?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          concepto?: string | null
+          coste_id?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          deleted_at?: string | null
+          documento_id?: string | null
+          estado?: string
+          fecha_pago?: string | null
+          fecha_solicitud?: string | null
+          id?: string
+          importacion_id?: string
+          importe?: number
+          importe_cop?: number | null
+          importe_utilizado?: number
+          moneda?: string
+          notas?: string | null
+          operador_id?: string | null
+          tc?: number | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "importacion_anticipos_coste_id_fkey"
+            columns: ["coste_id"]
+            isOneToOne: false
+            referencedRelation: "importacion_costes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "importacion_anticipos_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "importacion_anticipos_documento_id_fkey"
+            columns: ["documento_id"]
+            isOneToOne: false
+            referencedRelation: "importacion_documentos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "importacion_anticipos_importacion_id_fkey"
+            columns: ["importacion_id"]
+            isOneToOne: false
+            referencedRelation: "importaciones"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "importacion_anticipos_operador_id_fkey"
+            columns: ["operador_id"]
+            isOneToOne: false
+            referencedRelation: "operadores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      importacion_coste_reparto: {
+        Row: {
+          base_reparto: number | null
+          coste_id: string
+          created_at: string | null
+          importacion_linea_id: string
+          importe_estimado_cop: number | null
+          importe_real_cop: number | null
+          manual: boolean
+          updated_at: string | null
+        }
+        Insert: {
+          base_reparto?: number | null
+          coste_id: string
+          created_at?: string | null
+          importacion_linea_id: string
+          importe_estimado_cop?: number | null
+          importe_real_cop?: number | null
+          manual?: boolean
+          updated_at?: string | null
+        }
+        Update: {
+          base_reparto?: number | null
+          coste_id?: string
+          created_at?: string | null
+          importacion_linea_id?: string
+          importe_estimado_cop?: number | null
+          importe_real_cop?: number | null
+          manual?: boolean
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "importacion_coste_reparto_coste_id_fkey"
+            columns: ["coste_id"]
+            isOneToOne: false
+            referencedRelation: "importacion_costes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "importacion_coste_reparto_importacion_linea_id_fkey"
+            columns: ["importacion_linea_id"]
+            isOneToOne: false
+            referencedRelation: "importacion_lineas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "importacion_coste_reparto_importacion_linea_id_fkey"
+            columns: ["importacion_linea_id"]
+            isOneToOne: false
+            referencedRelation: "v_importacion_landed"
+            referencedColumns: ["linea_id"]
+          },
+        ]
+      }
+      importacion_costes: {
+        Row: {
+          capitalizable: boolean | null
+          concepto: string | null
+          created_at: string | null
+          created_by: string | null
+          criterio_reparto: string
+          deleted_at: string | null
+          documento_id: string | null
+          fecha_devengo: string | null
+          fecha_factura: string | null
+          fecha_pago: string | null
+          fecha_recuperacion_estimada: string | null
+          fecha_recuperacion_real: string | null
+          id: string
+          importacion_id: string
+          importe_estimado: number | null
+          importe_estimado_cop: number | null
+          importe_real: number | null
+          importe_real_cop: number | null
+          linea_directa_id: string | null
+          moneda_estimado: string | null
+          moneda_real: string | null
+          observaciones: string | null
+          operador_id: string | null
+          referencia_id: string | null
+          sin_coste_real: boolean
+          tc_estimado: number | null
+          tc_real: number | null
+          tipo_coste_codigo: string
+          updated_at: string | null
+        }
+        Insert: {
+          capitalizable?: boolean | null
+          concepto?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          criterio_reparto?: string
+          deleted_at?: string | null
+          documento_id?: string | null
+          fecha_devengo?: string | null
+          fecha_factura?: string | null
+          fecha_pago?: string | null
+          fecha_recuperacion_estimada?: string | null
+          fecha_recuperacion_real?: string | null
+          id?: string
+          importacion_id: string
+          importe_estimado?: number | null
+          importe_estimado_cop?: number | null
+          importe_real?: number | null
+          importe_real_cop?: number | null
+          linea_directa_id?: string | null
+          moneda_estimado?: string | null
+          moneda_real?: string | null
+          observaciones?: string | null
+          operador_id?: string | null
+          referencia_id?: string | null
+          sin_coste_real?: boolean
+          tc_estimado?: number | null
+          tc_real?: number | null
+          tipo_coste_codigo: string
+          updated_at?: string | null
+        }
+        Update: {
+          capitalizable?: boolean | null
+          concepto?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          criterio_reparto?: string
+          deleted_at?: string | null
+          documento_id?: string | null
+          fecha_devengo?: string | null
+          fecha_factura?: string | null
+          fecha_pago?: string | null
+          fecha_recuperacion_estimada?: string | null
+          fecha_recuperacion_real?: string | null
+          id?: string
+          importacion_id?: string
+          importe_estimado?: number | null
+          importe_estimado_cop?: number | null
+          importe_real?: number | null
+          importe_real_cop?: number | null
+          linea_directa_id?: string | null
+          moneda_estimado?: string | null
+          moneda_real?: string | null
+          observaciones?: string | null
+          operador_id?: string | null
+          referencia_id?: string | null
+          sin_coste_real?: boolean
+          tc_estimado?: number | null
+          tc_real?: number | null
+          tipo_coste_codigo?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "importacion_costes_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "importacion_costes_documento_id_fkey"
+            columns: ["documento_id"]
+            isOneToOne: false
+            referencedRelation: "importacion_documentos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "importacion_costes_importacion_id_fkey"
+            columns: ["importacion_id"]
+            isOneToOne: false
+            referencedRelation: "importaciones"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "importacion_costes_linea_directa_id_fkey"
+            columns: ["linea_directa_id"]
+            isOneToOne: false
+            referencedRelation: "importacion_lineas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "importacion_costes_linea_directa_id_fkey"
+            columns: ["linea_directa_id"]
+            isOneToOne: false
+            referencedRelation: "v_importacion_landed"
+            referencedColumns: ["linea_id"]
+          },
+          {
+            foreignKeyName: "importacion_costes_operador_id_fkey"
+            columns: ["operador_id"]
+            isOneToOne: false
+            referencedRelation: "operadores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "importacion_costes_referencia_id_fkey"
+            columns: ["referencia_id"]
+            isOneToOne: false
+            referencedRelation: "referencias"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "importacion_costes_tipo_coste_codigo_fkey"
+            columns: ["tipo_coste_codigo"]
+            isOneToOne: false
+            referencedRelation: "importacion_tipos_coste"
+            referencedColumns: ["codigo"]
+          },
+        ]
+      }
       importacion_documentos: {
         Row: {
           created_at: string | null
@@ -436,13 +746,19 @@ export type Database = {
           id: string
           importacion_id: string
           importe_mercancia: number | null
+          importe_mercancia_cop_est: number | null
+          importe_mercancia_cop_real: number | null
+          importe_mercancia_real: number | null
           moneda: string
           notas: string | null
           operador_proveedor_id: string | null
           pallets: number | null
           peso_kg: number | null
           precio_compra: number
+          precio_compra_real: number | null
           referencia_id: string
+          tc_estimado: number | null
+          tc_real: number | null
           updated_at: string | null
           volumen_m3: number | null
         }
@@ -453,13 +769,19 @@ export type Database = {
           id?: string
           importacion_id: string
           importe_mercancia?: number | null
+          importe_mercancia_cop_est?: number | null
+          importe_mercancia_cop_real?: number | null
+          importe_mercancia_real?: number | null
           moneda?: string
           notas?: string | null
           operador_proveedor_id?: string | null
           pallets?: number | null
           peso_kg?: number | null
           precio_compra: number
+          precio_compra_real?: number | null
           referencia_id: string
+          tc_estimado?: number | null
+          tc_real?: number | null
           updated_at?: string | null
           volumen_m3?: number | null
         }
@@ -470,13 +792,19 @@ export type Database = {
           id?: string
           importacion_id?: string
           importe_mercancia?: number | null
+          importe_mercancia_cop_est?: number | null
+          importe_mercancia_cop_real?: number | null
+          importe_mercancia_real?: number | null
           moneda?: string
           notas?: string | null
           operador_proveedor_id?: string | null
           pallets?: number | null
           peso_kg?: number | null
           precio_compra?: number
+          precio_compra_real?: number | null
           referencia_id?: string
+          tc_estimado?: number | null
+          tc_real?: number | null
           updated_at?: string | null
           volumen_m3?: number | null
         }
@@ -1402,7 +1730,177 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      v_importacion_anticipos: {
+        Row: {
+          concepto: string | null
+          coste_id: string | null
+          created_at: string | null
+          created_by: string | null
+          deleted_at: string | null
+          documento_id: string | null
+          estado: string | null
+          fecha_pago: string | null
+          fecha_solicitud: string | null
+          id: string | null
+          importacion_id: string | null
+          importe: number | null
+          importe_cop: number | null
+          importe_utilizado: number | null
+          moneda: string | null
+          notas: string | null
+          operador_id: string | null
+          saldo: number | null
+          saldo_cop: number | null
+          tc: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          concepto?: string | null
+          coste_id?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          deleted_at?: string | null
+          documento_id?: string | null
+          estado?: string | null
+          fecha_pago?: string | null
+          fecha_solicitud?: string | null
+          id?: string | null
+          importacion_id?: string | null
+          importe?: number | null
+          importe_cop?: number | null
+          importe_utilizado?: number | null
+          moneda?: string | null
+          notas?: string | null
+          operador_id?: string | null
+          saldo?: never
+          saldo_cop?: never
+          tc?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          concepto?: string | null
+          coste_id?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          deleted_at?: string | null
+          documento_id?: string | null
+          estado?: string | null
+          fecha_pago?: string | null
+          fecha_solicitud?: string | null
+          id?: string | null
+          importacion_id?: string | null
+          importe?: number | null
+          importe_cop?: number | null
+          importe_utilizado?: number | null
+          moneda?: string | null
+          notas?: string | null
+          operador_id?: string | null
+          saldo?: never
+          saldo_cop?: never
+          tc?: number | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "importacion_anticipos_coste_id_fkey"
+            columns: ["coste_id"]
+            isOneToOne: false
+            referencedRelation: "importacion_costes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "importacion_anticipos_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "importacion_anticipos_documento_id_fkey"
+            columns: ["documento_id"]
+            isOneToOne: false
+            referencedRelation: "importacion_documentos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "importacion_anticipos_importacion_id_fkey"
+            columns: ["importacion_id"]
+            isOneToOne: false
+            referencedRelation: "importaciones"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "importacion_anticipos_operador_id_fkey"
+            columns: ["operador_id"]
+            isOneToOne: false
+            referencedRelation: "operadores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      v_importacion_landed: {
+        Row: {
+          cantidad_unidades: number | null
+          costes_est_cop: number | null
+          costes_prov_cop: number | null
+          costes_real_cop: number | null
+          importacion_id: string | null
+          landed_est_cop: number | null
+          landed_prov_cop: number | null
+          landed_prov_unitario: number | null
+          landed_real_cop: number | null
+          linea_id: string | null
+          mercancia_est_cop: number | null
+          mercancia_prov_cop: number | null
+          mercancia_real_cop: number | null
+          prov_desde_estimado_cop: number | null
+          referencia_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "importacion_lineas_importacion_id_fkey"
+            columns: ["importacion_id"]
+            isOneToOne: false
+            referencedRelation: "importaciones"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "importacion_lineas_referencia_id_fkey"
+            columns: ["referencia_id"]
+            isOneToOne: false
+            referencedRelation: "referencias"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      v_importacion_landed_sku: {
+        Row: {
+          importacion_id: string | null
+          landed_est_cop: number | null
+          landed_prov_cop: number | null
+          landed_prov_unitario: number | null
+          landed_real_cop: number | null
+          prov_desde_estimado_cop: number | null
+          referencia_id: string | null
+          unidades: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "importacion_lineas_importacion_id_fkey"
+            columns: ["importacion_id"]
+            isOneToOne: false
+            referencedRelation: "importaciones"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "importacion_lineas_referencia_id_fkey"
+            columns: ["referencia_id"]
+            isOneToOne: false
+            referencedRelation: "referencias"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       app_role: { Args: never; Returns: string }
@@ -1419,8 +1917,27 @@ export type Database = {
       can_read_all: { Args: never; Returns: boolean }
       can_see_costs: { Args: never; Returns: boolean }
       current_user_id: { Args: never; Returns: string }
+      importacion_costes_resueltos: {
+        Args: { p_importacion_id: string }
+        Returns: boolean
+      }
       is_superadmin: { Args: never; Returns: boolean }
       pedido_consume_stock: { Args: { est: string }; Returns: boolean }
+      recalcular_reparto: {
+        Args: { p_importacion_id: string }
+        Returns: undefined
+      }
+      reconciliar_costes: {
+        Args: { p_importacion_id: string }
+        Returns: {
+          coste_id: string
+          esperado_est: number
+          esperado_real: number
+          suma_est: number
+          suma_real: number
+          tipo: string
+        }[]
+      }
       siguiente_codigo_importacion: { Args: never; Returns: string }
       siguiente_numero_pedido: { Args: never; Returns: string }
     }
