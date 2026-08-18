@@ -171,6 +171,9 @@ export interface LandedLinea {
   importacion_id: string
   referencia_id: string
   cantidad_unidades: number
+  moneda: string
+  tc_efectivo_est: number | null
+  tc_origen_est: string // 'cop' | 'override' | 'cabecera' | 'pendiente'
   mercancia_est_cop: number | null
   mercancia_real_cop: number | null
   mercancia_prov_cop: number | null

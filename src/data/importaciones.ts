@@ -264,6 +264,7 @@ export interface ImportacionLinea {
   volumen_m3: number | null
   precio_compra: number
   moneda: string
+  tc_estimado: number | null // override de TC de valoración por línea (si null, usa tc_presupuestado de la cabecera)
   importe_mercancia: number | null
   notas: string | null
   // enriquecidos
@@ -302,7 +303,14 @@ export type LineaInput = {
   volumen_m3?: number | null
   precio_compra: number
   moneda?: string
+  tc_estimado?: number | null
   notas?: string | null
+}
+
+// Actualiza solo el TC override de una línea (o lo limpia con null -> usa cabecera).
+export async function updateLineaTc(id: string, tc_estimado: number | null): Promise<void> {
+  const { error } = await supabase.from('importacion_lineas').update({ tc_estimado }).eq('id', id)
+  if (error) throw error
 }
 
 export async function addLinea(importacionId: string, payload: LineaInput): Promise<void> {

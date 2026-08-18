@@ -746,9 +746,6 @@ export type Database = {
           id: string
           importacion_id: string
           importe_mercancia: number | null
-          importe_mercancia_cop_est: number | null
-          importe_mercancia_cop_real: number | null
-          importe_mercancia_real: number | null
           moneda: string
           notas: string | null
           operador_proveedor_id: string | null
@@ -769,9 +766,6 @@ export type Database = {
           id?: string
           importacion_id: string
           importe_mercancia?: number | null
-          importe_mercancia_cop_est?: number | null
-          importe_mercancia_cop_real?: number | null
-          importe_mercancia_real?: number | null
           moneda?: string
           notas?: string | null
           operador_proveedor_id?: string | null
@@ -792,9 +786,6 @@ export type Database = {
           id?: string
           importacion_id?: string
           importe_mercancia?: number | null
-          importe_mercancia_cop_est?: number | null
-          importe_mercancia_cop_real?: number | null
-          importe_mercancia_real?: number | null
           moneda?: string
           notas?: string | null
           operador_proveedor_id?: string | null
@@ -1853,8 +1844,11 @@ export type Database = {
           mercancia_est_cop: number | null
           mercancia_prov_cop: number | null
           mercancia_real_cop: number | null
+          moneda: string | null
           prov_desde_estimado_cop: number | null
           referencia_id: string | null
+          tc_efectivo_est: number | null
+          tc_origen_est: string | null
         }
         Relationships: [
           {
@@ -1940,6 +1934,10 @@ export type Database = {
       }
       siguiente_codigo_importacion: { Args: never; Returns: string }
       siguiente_numero_pedido: { Args: never; Returns: string }
+      tc_efectivo: {
+        Args: { p_moneda: string; p_tc_cabecera: number; p_tc_linea: number }
+        Returns: number
+      }
     }
     Enums: {
       [_ in never]: never

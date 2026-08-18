@@ -9,7 +9,7 @@ import { listAlmacenes } from '../../data/almacenes'
 import type { Almacen } from '../../data/almacenes'
 import {
   getImportacion, updateImportacion, cambiarEstadoLogistico, archivarImportacion, restaurarImportacion,
-  listLineas, addLinea, deleteLinea,
+  listLineas, addLinea, deleteLinea, updateLineaTc,
   listImportacionOperadores, addImportacionOperador, removeImportacionOperador,
   listDocumentos, crearDocumento, subirArchivo, urlFirmada, actualizarDocumento, borrarDocumento, archivarDocumento,
   listOperadores, listTiposRolOperador, listTiposDocumento,
@@ -146,7 +146,7 @@ function TabMercancia({ impId, editable, onError }: { impId: string; editable: b
   const [lineas, setLineas] = useState<ImportacionLinea[]>([])
   const [refs, setRefs] = useState<ReferenciaResumen[]>([])
   const [ops, setOps] = useState<Operador[]>([])
-  const [nueva, setNueva] = useState({ referencia_id: '', proveedor: '', cantidad: '', cajas: '', pallets: '', precio: '', moneda: 'EUR' })
+  const [nueva, setNueva] = useState({ referencia_id: '', proveedor: '', cantidad: '', cajas: '', pallets: '', precio: '', moneda: 'EUR', tc: '' })
 
   const cargar = useCallback(() => { listLineas(impId).then(setLineas).catch((e) => onError(e.message)) }, [impId, onError])
   useEffect(() => {
@@ -164,20 +164,21 @@ function TabMercancia({ impId, editable, onError }: { impId: string; editable: b
         referencia_id: nueva.referencia_id,
         operador_proveedor_id: nueva.proveedor || null,
         cantidad_unidades: cant, cajas: num(nueva.cajas), pallets: num(nueva.pallets),
-        precio_compra: precio, moneda: nueva.moneda,
+        precio_compra: precio, moneda: nueva.moneda, tc_estimado: num(nueva.tc),
       })
-      setNueva({ referencia_id: '', proveedor: '', cantidad: '', cajas: '', pallets: '', precio: '', moneda: 'EUR' })
+      setNueva({ referencia_id: '', proveedor: '', cantidad: '', cajas: '', pallets: '', precio: '', moneda: 'EUR', tc: '' })
       cargar()
     } catch (e) { onError((e as Error).message) }
   }
   const quitar = async (lid: string) => { try { await deleteLinea(lid); cargar() } catch (e) { onError((e as Error).message) } }
+  const guardarTc = async (id: string, v: string) => { try { await updateLineaTc(id, num(v)); cargar() } catch (e) { onError((e as Error).message) } }
 
   return (
     <div className="card stack stack-3">
       <h2 className="t-heading">Mercancía por referencia</h2>
       <div className="table-wrap">
         <table className="data-table">
-          <thead><tr><th>Referencia</th><th>Proveedor</th><th>Uds.</th><th>Cajas</th><th>Pallets</th><th>Precio</th><th>Importe</th><th></th></tr></thead>
+          <thead><tr><th>Referencia</th><th>Proveedor</th><th>Uds.</th><th>Cajas</th><th>Pallets</th><th>Precio</th><th>Importe</th><th>TC valoración (override)</th><th></th></tr></thead>
           <tbody>
             {lineas.map((l) => (
               <tr key={l.id}>
@@ -188,10 +189,17 @@ function TabMercancia({ impId, editable, onError }: { impId: string; editable: b
                 <td>{l.pallets ?? '—'}</td>
                 <td>{l.precio_compra} {l.moneda}</td>
                 <td>{l.importe_mercancia} {l.moneda}</td>
+                <td>
+                  {editable ? (
+                    <input key={l.id + '-' + (l.tc_estimado ?? '')} style={{ width: 90 }} defaultValue={l.tc_estimado ?? ''}
+                      placeholder={l.moneda === 'COP' ? '1:1' : 'cabecera'} title="Vacío = usa el TC presupuestado de la cabecera"
+                      onBlur={(e) => { if ((e.target.value.trim() || null) !== (l.tc_estimado != null ? String(l.tc_estimado) : null)) guardarTc(l.id, e.target.value) }} />
+                  ) : (l.tc_estimado ?? (l.moneda === 'COP' ? '1:1' : 'cabecera'))}
+                </td>
                 <td>{editable && <button className="btn btn-secondary" onClick={() => quitar(l.id)}>Quitar</button>}</td>
               </tr>
             ))}
-            {lineas.length === 0 && <tr><td colSpan={8} className="t-body-sm">Sin mercancía todavía.</td></tr>}
+            {lineas.length === 0 && <tr><td colSpan={9} className="t-body-sm">Sin mercancía todavía.</td></tr>}
           </tbody>
         </table>
       </div>
@@ -212,9 +220,10 @@ function TabMercancia({ impId, editable, onError }: { impId: string; editable: b
             <input placeholder="Pallets" style={{ width: 70 }} value={nueva.pallets} onChange={(e) => setNueva({ ...nueva, pallets: e.target.value })} />
             <input placeholder="Precio ud." style={{ width: 90 }} value={nueva.precio} onChange={(e) => setNueva({ ...nueva, precio: e.target.value })} />
             <input placeholder="Moneda" style={{ width: 70 }} value={nueva.moneda} onChange={(e) => setNueva({ ...nueva, moneda: e.target.value })} />
+            <input placeholder="TC override" style={{ width: 90 }} value={nueva.tc} onChange={(e) => setNueva({ ...nueva, tc: e.target.value })} />
             <button className="btn btn-primary" onClick={agregar}>Añadir</button>
           </div>
-          <p className="t-body-sm">El importe se calcula automáticamente (cantidad × precio).</p>
+          <p className="t-body-sm">El importe se calcula automáticamente (cantidad × precio). El TC override es opcional: si se deja vacío, la valoración usa el TC presupuestado de la cabecera (y para moneda COP, 1:1).</p>
         </div>
       )}
     </div>

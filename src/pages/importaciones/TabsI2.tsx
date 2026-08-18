@@ -17,6 +17,7 @@ import type { TipoCoste } from '../../data/importaciones'
 const n = (s: string): number | null => (s.trim() === '' ? null : Number.isFinite(Number(s)) ? Number(s) : null)
 const cop = (v: number | null | undefined) => formatCOP(v ?? 0)
 const pct = (part: number, total: number) => (total > 0 ? Math.round((part / total) * 100) : 0)
+const TC_ORIGEN_LABEL: Record<string, string> = { cop: 'COP (1:1)', override: 'Override línea', cabecera: 'Presupuestado', pendiente: 'Pendiente' }
 
 // ============ COSTES ============
 export function TabCostes({ imp, puedeGestionar, onError }: { imp: { id: string; estado_coste: string }; puedeGestionar: boolean; onError: (m: string) => void }) {
@@ -97,26 +98,35 @@ export function TabCostes({ imp, puedeGestionar, onError }: { imp: { id: string;
         </div>
         <div className="table-wrap">
           <table className="data-table">
-            <thead><tr><th>Referencia</th><th>Uds.</th><th>Landed est.</th><th>Landed real</th><th>Landed provisional</th><th>Unitario prov.</th><th>% aún estimado</th></tr></thead>
+            <thead><tr><th>Referencia</th><th>Uds.</th><th>TC efectivo</th><th>Origen TC</th><th>Landed est.</th><th>Landed real</th><th>Landed provisional</th><th>Unitario prov.</th><th>% aún estimado</th></tr></thead>
             <tbody>
-              {landed.map((x) => (
-                <tr key={x.linea_id}>
-                  <td>{nombreLinea(x.linea_id).split(' · ')[0]}</td>
-                  <td>{x.cantidad_unidades}</td>
-                  <td>{cop(x.landed_est_cop)}</td>
-                  <td>{cop(x.landed_real_cop)}</td>
-                  <td><b>{cop(x.landed_prov_cop)}</b></td>
-                  <td>{cop(x.landed_prov_unitario)}</td>
-                  <td>
-                    <span className="badge">{pct(x.prov_desde_estimado_cop ?? 0, x.landed_prov_cop ?? 0)}%</span>
-                  </td>
-                </tr>
-              ))}
-              {landed.length === 0 && <tr><td colSpan={7} className="t-body-sm">Sin líneas de mercancía.</td></tr>}
+              {landed.map((x) => {
+                const pendiente = x.tc_origen_est === 'pendiente'
+                return (
+                  <tr key={x.linea_id}>
+                    <td>{nombreLinea(x.linea_id).split(' · ')[0]}</td>
+                    <td>{x.cantidad_unidades}</td>
+                    <td>{pendiente ? '—' : (x.tc_efectivo_est ?? '—')}</td>
+                    <td><span className="badge">{TC_ORIGEN_LABEL[x.tc_origen_est] ?? x.tc_origen_est}</span></td>
+                    {pendiente ? (
+                      <td colSpan={5}><span className="badge">Pendiente de TC (define TC presupuestado u override de línea)</span></td>
+                    ) : (
+                      <>
+                        <td>{cop(x.landed_est_cop)}</td>
+                        <td>{cop(x.landed_real_cop)}</td>
+                        <td><b>{cop(x.landed_prov_cop)}</b></td>
+                        <td>{cop(x.landed_prov_unitario)}</td>
+                        <td><span className="badge">{pct(x.prov_desde_estimado_cop ?? 0, x.landed_prov_cop ?? 0)}%</span></td>
+                      </>
+                    )}
+                  </tr>
+                )
+              })}
+              {landed.length === 0 && <tr><td colSpan={9} className="t-body-sm">Sin líneas de mercancía.</td></tr>}
             </tbody>
           </table>
         </div>
-        <p className="t-body-sm">El provisional usa, por cada componente, el valor real si existe y si no el estimado. La columna "% aún estimado" indica cuánto del landed sigue siendo estimación.</p>
+        <p className="t-body-sm">TC efectivo = override de la línea si existe; si no, el TC presupuestado de la cabecera; para moneda COP, 1. El provisional usa, por componente, el valor real si existe y si no el estimado; "% aún estimado" indica cuánto del landed sigue siendo estimación.</p>
       </div>
 
       {/* Costes capitalizables */}
@@ -436,6 +446,7 @@ export function ResumenIndicadoresI2({ impId }: { impId: string }) {
   const provEst = landed.reduce((s, x) => s + (x.prov_desde_estimado_cop ?? 0), 0)
   const desvPct = est > 0 ? Math.round(((prov - est) / est) * 1000) / 10 : 0
   const pendientes = costes.filter((c) => c.capitalizable && c.importe_real == null && !c.sin_coste_real).length
+  const sinValorar = landed.filter((x) => x.tc_origen_est === 'pendiente').length
   const saldoAnticipos = anticipos.reduce((s, a) => s + (a.saldo_cop ?? 0), 0)
 
   const items = useMemo(() => ([
@@ -458,6 +469,7 @@ export function ResumenIndicadoresI2({ impId }: { impId: string }) {
           </div>
         ))}
       </div>
+      {sinValorar > 0 && <p className="t-body-sm">⚠ {sinValorar} línea(s) <b>pendiente(s) de TC</b>: sin TC presupuestado ni override no se puede valorar la mercancía (no cuentan en el landed).</p>}
       {pendientes > 0 && <p className="t-body-sm">⚠ {pendientes} concepto(s) capitalizable(s) sin factura real: el landed sigue siendo provisional.</p>}
     </div>
   )
