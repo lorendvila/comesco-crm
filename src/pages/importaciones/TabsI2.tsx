@@ -61,11 +61,15 @@ export function TabCostes({ imp, puedeGestionar, onError }: { imp: { id: string;
 
   const guardarCoste = async () => {
     onError('')
+    // Un coste NO capitalizable no se reparte: sin criterio/destino de reparto.
+    // Se guarda un criterio neutral ('valor') sin destino; no se envía 'directo' ni referencia/línea.
+    const cap = form.capitalizable
     const payload: CosteInput = {
-      tipo_coste_codigo: form.tipo, capitalizable: form.capitalizable, concepto: form.concepto || null,
-      operador_id: form.operador || null, criterio_reparto: form.criterio,
-      referencia_id: form.criterio === 'directo' && form.directoTipo === 'ref' ? form.referencia || null : null,
-      linea_directa_id: form.criterio === 'directo' && form.directoTipo === 'linea' ? form.linea || null : null,
+      tipo_coste_codigo: form.tipo, capitalizable: cap, concepto: form.concepto || null,
+      operador_id: form.operador || null,
+      criterio_reparto: cap ? form.criterio : 'valor',
+      referencia_id: cap && form.criterio === 'directo' && form.directoTipo === 'ref' ? form.referencia || null : null,
+      linea_directa_id: cap && form.criterio === 'directo' && form.directoTipo === 'linea' ? form.linea || null : null,
       importe_estimado: n(form.impEst), moneda_estimado: form.monEst || null, tc_estimado: n(form.tcEst),
       importe_real: n(form.impReal), moneda_real: form.monReal || null, tc_real: n(form.tcReal),
       sin_coste_real: form.sinReal, fecha_factura: form.fechaFactura || null,
@@ -74,7 +78,7 @@ export function TabCostes({ imp, puedeGestionar, onError }: { imp: { id: string;
     try {
       if (form.id) await actualizarCoste(form.id, payload)
       else await crearCoste(impId, payload)
-      if (form.criterio !== 'manual') await recalcularReparto(impId)
+      if (cap && form.criterio !== 'manual') await recalcularReparto(impId)
       setForm(nuevoForm()); recargar()
     } catch (e) { onError((e as Error).message) }
   }
@@ -317,30 +321,35 @@ function FormularioCoste({ form, setForm, tipos, ops, refs, lineas }: { form: Fo
           {ops.map((o) => <option key={o.id} value={o.id}>{o.nombre}</option>)}
         </select>
       </div>
-      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-        <select value={form.criterio} onChange={(e) => setForm({ ...form, criterio: e.target.value })}>
-          {CRITERIOS.map((c) => <option key={c} value={c}>{CRITERIO_LABEL[c]}</option>)}
-        </select>
-        {form.criterio === 'directo' && (
-          <>
-            <select value={form.directoTipo} onChange={(e) => setForm({ ...form, directoTipo: e.target.value as 'ref' | 'linea' })}>
-              <option value="ref">a Referencia</option>
-              <option value="linea">a Línea</option>
-            </select>
-            {form.directoTipo === 'ref' ? (
-              <select value={form.referencia} onChange={(e) => setForm({ ...form, referencia: e.target.value })}>
-                <option value="">— Referencia —</option>
-                {refs.map((r) => <option key={r.id} value={r.id}>{r.nombre_producto}</option>)}
+      {form.capitalizable ? (
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+          <span className="t-body-sm">Reparto:</span>
+          <select value={form.criterio} onChange={(e) => setForm({ ...form, criterio: e.target.value })}>
+            {CRITERIOS.map((c) => <option key={c} value={c}>{CRITERIO_LABEL[c]}</option>)}
+          </select>
+          {form.criterio === 'directo' && (
+            <>
+              <select value={form.directoTipo} onChange={(e) => setForm({ ...form, directoTipo: e.target.value as 'ref' | 'linea' })}>
+                <option value="ref">a Referencia</option>
+                <option value="linea">a Línea</option>
               </select>
-            ) : (
-              <select value={form.linea} onChange={(e) => setForm({ ...form, linea: e.target.value })}>
-                <option value="">— Línea —</option>
-                {lineas.map((l) => <option key={l.id} value={l.id}>{l.referencia_nombre} · {l.cantidad_unidades} u</option>)}
-              </select>
-            )}
-          </>
-        )}
-      </div>
+              {form.directoTipo === 'ref' ? (
+                <select value={form.referencia} onChange={(e) => setForm({ ...form, referencia: e.target.value })}>
+                  <option value="">— Referencia —</option>
+                  {refs.map((r) => <option key={r.id} value={r.id}>{r.nombre_producto}</option>)}
+                </select>
+              ) : (
+                <select value={form.linea} onChange={(e) => setForm({ ...form, linea: e.target.value })}>
+                  <option value="">— Línea —</option>
+                  {lineas.map((l) => <option key={l.id} value={l.id}>{l.referencia_nombre} · {l.cantidad_unidades} u</option>)}
+                </select>
+              )}
+            </>
+          )}
+        </div>
+      ) : (
+        <p className="t-body-sm">Coste <b>no capitalizable</b>: queda registrado y separado, <b>no se reparte</b> ni entra en el landed cost.</p>
+      )}
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
         <span className="t-body-sm">Estimado:</span>
         <input placeholder="Importe" style={{ width: 100 }} value={form.impEst} onChange={(e) => setForm({ ...form, impEst: e.target.value })} />
