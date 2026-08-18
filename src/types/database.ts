@@ -319,6 +319,94 @@ export type Database = {
           },
         ]
       }
+      importacion_anticipo_aplicaciones: {
+        Row: {
+          anticipo_id: string
+          anulada_at: string | null
+          anulada_por: string | null
+          coste_id: string | null
+          created_at: string | null
+          created_by: string | null
+          documento_id: string | null
+          fecha: string | null
+          id: string
+          importe: number
+          motivo_anulacion: string | null
+          notas: string | null
+        }
+        Insert: {
+          anticipo_id: string
+          anulada_at?: string | null
+          anulada_por?: string | null
+          coste_id?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          documento_id?: string | null
+          fecha?: string | null
+          id?: string
+          importe: number
+          motivo_anulacion?: string | null
+          notas?: string | null
+        }
+        Update: {
+          anticipo_id?: string
+          anulada_at?: string | null
+          anulada_por?: string | null
+          coste_id?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          documento_id?: string | null
+          fecha?: string | null
+          id?: string
+          importe?: number
+          motivo_anulacion?: string | null
+          notas?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "importacion_anticipo_aplicaciones_anticipo_id_fkey"
+            columns: ["anticipo_id"]
+            isOneToOne: false
+            referencedRelation: "importacion_anticipos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "importacion_anticipo_aplicaciones_anticipo_id_fkey"
+            columns: ["anticipo_id"]
+            isOneToOne: false
+            referencedRelation: "v_importacion_anticipos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "importacion_anticipo_aplicaciones_anulada_por_fkey"
+            columns: ["anulada_por"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "importacion_anticipo_aplicaciones_coste_id_fkey"
+            columns: ["coste_id"]
+            isOneToOne: false
+            referencedRelation: "importacion_costes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "importacion_anticipo_aplicaciones_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "importacion_anticipo_aplicaciones_documento_id_fkey"
+            columns: ["documento_id"]
+            isOneToOne: false
+            referencedRelation: "importacion_documentos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       importacion_anticipos: {
         Row: {
           concepto: string | null
@@ -1732,6 +1820,7 @@ export type Database = {
           estado: string | null
           fecha_pago: string | null
           fecha_solicitud: string | null
+          grado_aplicacion: string | null
           id: string | null
           importacion_id: string | null
           importe: number | null
@@ -1755,6 +1844,7 @@ export type Database = {
           estado?: string | null
           fecha_pago?: string | null
           fecha_solicitud?: string | null
+          grado_aplicacion?: never
           id?: string | null
           importacion_id?: string | null
           importe?: number | null
@@ -1778,6 +1868,7 @@ export type Database = {
           estado?: string | null
           fecha_pago?: string | null
           fecha_solicitud?: string | null
+          grado_aplicacion?: never
           id?: string | null
           importacion_id?: string | null
           importe?: number | null

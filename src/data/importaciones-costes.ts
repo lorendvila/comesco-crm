@@ -213,13 +213,16 @@ export interface Anticipo {
   fecha_pago: string | null
   saldo: number
   saldo_cop: number | null
+  grado_aplicacion: string // sin_aplicar | parcial | aplicado (derivado)
 }
-export const ESTADOS_ANTICIPO = ['solicitado', 'pagado', 'aplicado', 'devuelto'] as const
+// Estado = ciclo de PAGO. El grado de aplicación es derivado (grado_aplicacion).
+export const ESTADOS_ANTICIPO = ['solicitado', 'pagado', 'devuelto'] as const
+export const GRADO_LABEL: Record<string, string> = { sin_aplicar: 'Sin aplicar', parcial: 'Parcial', aplicado: 'Aplicado' }
 
 export async function listAnticipos(importacionId: string): Promise<Anticipo[]> {
   const { data, error } = await supabase
     .from('v_importacion_anticipos')
-    .select('id, importacion_id, operador_id, coste_id, concepto, importe, moneda, tc, importe_cop, estado, importe_utilizado, fecha_solicitud, fecha_pago, saldo, saldo_cop')
+    .select('id, importacion_id, operador_id, coste_id, concepto, importe, moneda, tc, importe_cop, estado, importe_utilizado, fecha_solicitud, fecha_pago, saldo, saldo_cop, grado_aplicacion')
     .eq('importacion_id', importacionId)
     .order('created_at', { ascending: true })
     .returns<Anticipo[]>()
@@ -233,7 +236,6 @@ export type AnticipoInput = {
   moneda?: string
   tc?: number | null
   estado?: string
-  importe_utilizado?: number
   fecha_solicitud?: string | null
   fecha_pago?: string | null
 }
@@ -243,6 +245,42 @@ export async function crearAnticipo(importacionId: string, payload: AnticipoInpu
 }
 export async function actualizarAnticipo(id: string, patch: Partial<AnticipoInput>): Promise<void> {
   const { error } = await supabase.from('importacion_anticipos').update(patch).eq('id', id)
+  if (error) throw error
+}
+
+// ---- Aplicaciones de un anticipo (libro; soft-delete por anulación) ----
+export interface Aplicacion {
+  id: string
+  anticipo_id: string
+  importe: number
+  fecha: string | null
+  coste_id: string | null
+  documento_id: string | null
+  notas: string | null
+  anulada_at: string | null
+  motivo_anulacion: string | null
+  created_at: string | null
+}
+export async function listAplicaciones(anticipoId: string): Promise<Aplicacion[]> {
+  const { data, error } = await supabase
+    .from('importacion_anticipo_aplicaciones')
+    .select('id, anticipo_id, importe, fecha, coste_id, documento_id, notas, anulada_at, motivo_anulacion, created_at')
+    .eq('anticipo_id', anticipoId)
+    .order('created_at', { ascending: true })
+    .returns<Aplicacion[]>()
+  if (error) throw error
+  return data ?? []
+}
+export async function aplicarAnticipo(anticipoId: string, payload: {
+  importe: number; fecha?: string | null; coste_id?: string | null; documento_id?: string | null; notas?: string | null; created_by?: string | null
+}): Promise<void> {
+  const { error } = await supabase.from('importacion_anticipo_aplicaciones').insert({ ...payload, anticipo_id: anticipoId })
+  if (error) throw error
+}
+export async function anularAplicacion(id: string, motivo: string, anuladaPor?: string | null): Promise<void> {
+  const { error } = await supabase.from('importacion_anticipo_aplicaciones')
+    .update({ anulada_at: new Date().toISOString(), motivo_anulacion: motivo || null, anulada_por: anuladaPor ?? null })
+    .eq('id', id)
   if (error) throw error
 }
 

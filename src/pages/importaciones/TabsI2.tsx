@@ -1,15 +1,18 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { formatCOP } from '../../data/constants'
-import { listLineas, listOperadores } from '../../data/importaciones'
-import type { ImportacionLinea, Operador } from '../../data/importaciones'
+import { formatCOP, formatFecha } from '../../data/constants'
+import { useAuth } from '../../auth/AuthProvider'
+import { listLineas, listOperadores, listDocumentos } from '../../data/importaciones'
+import type { ImportacionLinea, Operador, DocumentoImportacion } from '../../data/importaciones'
 import { listReferencias } from '../../data/referencias'
 import type { ReferenciaResumen } from '../../data/referencias'
 import {
   listCostes, crearCoste, actualizarCoste, borrarCoste,
   recalcularReparto, listReparto, guardarRepartoManual, reconciliar, listLanded,
   listAnticipos, crearAnticipo, actualizarAnticipo, tcSugerido,
-  CRITERIOS, CRITERIO_LABEL, ESTADOS_ANTICIPO,
+  listAplicaciones, aplicarAnticipo, anularAplicacion,
+  CRITERIOS, CRITERIO_LABEL, ESTADOS_ANTICIPO, GRADO_LABEL,
 } from '../../data/importaciones-costes'
+import type { Aplicacion } from '../../data/importaciones-costes'
 import type { Coste, CosteInput, RepartoRow, LandedLinea, Anticipo } from '../../data/importaciones-costes'
 import { listTiposCoste } from '../../data/importaciones'
 import type { TipoCoste } from '../../data/importaciones'
@@ -374,10 +377,13 @@ function FormularioCoste({ form, setForm, tipos, ops, refs, lineas }: { form: Fo
 }
 
 // ============ ANTICIPOS ============
+const GRADO_BADGE: Record<string, string> = { sin_aplicar: 'Sin aplicar', parcial: 'Parcial', aplicado: 'Aplicado' }
+
 export function TabAnticipos({ impId, puedeGestionar, onError }: { impId: string; puedeGestionar: boolean; onError: (m: string) => void }) {
   const [items, setItems] = useState<Anticipo[]>([])
   const [ops, setOps] = useState<Operador[]>([])
-  const [f, setF] = useState({ operador: '', concepto: '', importe: '', moneda: 'EUR', tc: '', estado: 'solicitado', utilizado: '', fechaSol: '', fechaPago: '' })
+  const [sel, setSel] = useState<string | null>(null)
+  const [f, setF] = useState({ operador: '', concepto: '', importe: '', moneda: 'EUR', tc: '', estado: 'solicitado', fechaSol: '', fechaPago: '' })
 
   const recargar = useCallback(() => { listAnticipos(impId).then(setItems).catch((e) => onError(e.message)) }, [impId, onError])
   useEffect(() => { recargar(); listOperadores().then(setOps).catch(() => {}) }, [recargar])
@@ -387,8 +393,8 @@ export function TabAnticipos({ impId, puedeGestionar, onError }: { impId: string
     const importe = n(f.importe)
     if (importe == null) { onError('Importe obligatorio.'); return }
     try {
-      await crearAnticipo(impId, { operador_id: f.operador || null, concepto: f.concepto || null, importe, moneda: f.moneda, tc: n(f.tc), estado: f.estado, importe_utilizado: n(f.utilizado) ?? 0, fecha_solicitud: f.fechaSol || null, fecha_pago: f.fechaPago || null })
-      setF({ operador: '', concepto: '', importe: '', moneda: 'EUR', tc: '', estado: 'solicitado', utilizado: '', fechaSol: '', fechaPago: '' })
+      await crearAnticipo(impId, { operador_id: f.operador || null, concepto: f.concepto || null, importe, moneda: f.moneda, tc: n(f.tc), estado: f.estado, fecha_solicitud: f.fechaSol || null, fecha_pago: f.fechaPago || null })
+      setF({ operador: '', concepto: '', importe: '', moneda: 'EUR', tc: '', estado: 'solicitado', fechaSol: '', fechaPago: '' })
       recargar()
     } catch (e) { onError((e as Error).message) }
   }
@@ -396,45 +402,136 @@ export function TabAnticipos({ impId, puedeGestionar, onError }: { impId: string
 
   const totalCop = items.reduce((s, a) => s + (a.importe_cop ?? 0), 0)
   const saldoCop = items.reduce((s, a) => s + (a.saldo_cop ?? 0), 0)
+  const selAnt = items.find((a) => a.id === sel) ?? null
+
+  return (
+    <div className="stack stack-4">
+      <div className="card stack stack-3">
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+          <h2 className="t-heading">Anticipos y pagos</h2>
+          <span className="t-body-sm">Anticipado: <b>{cop(totalCop)}</b> · Saldo pendiente de justificar: <b>{cop(saldoCop)}</b></span>
+        </div>
+        <div className="table-wrap">
+          <table className="data-table">
+            <thead><tr><th>Operador</th><th>Concepto</th><th>Importe</th><th>COP</th><th>Estado pago</th><th>Utilizado</th><th>Saldo</th><th>Grado</th><th></th></tr></thead>
+            <tbody>
+              {items.map((a) => (
+                <tr key={a.id} style={sel === a.id ? { outline: '2px solid var(--accent, #888)' } : undefined}>
+                  <td>{ops.find((o) => o.id === a.operador_id)?.nombre ?? '—'}</td>
+                  <td>{a.concepto ?? '—'}</td>
+                  <td>{a.importe} {a.moneda}{a.tc ? ` @${a.tc}` : ''}</td>
+                  <td>{cop(a.importe_cop)}</td>
+                  <td>{puedeGestionar ? (
+                    <select value={a.estado} onChange={(e) => cambiarEstado(a, e.target.value)}>{ESTADOS_ANTICIPO.map((s) => <option key={s} value={s}>{s}</option>)}</select>
+                  ) : <span className="badge">{a.estado}</span>}</td>
+                  <td>{a.importe_utilizado} {a.moneda}</td>
+                  <td>{a.saldo} {a.moneda}</td>
+                  <td><span className="badge">{GRADO_BADGE[a.grado_aplicacion] ?? a.grado_aplicacion}</span></td>
+                  <td><button className="btn btn-secondary" onClick={() => setSel(sel === a.id ? null : a.id)}>{sel === a.id ? 'Cerrar' : 'Aplicar / detalle'}</button></td>
+                </tr>
+              ))}
+              {items.length === 0 && <tr><td colSpan={9} className="t-body-sm">Sin anticipos.</td></tr>}
+            </tbody>
+          </table>
+        </div>
+        {puedeGestionar && (
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+            <select value={f.operador} onChange={(e) => setF({ ...f, operador: e.target.value })}><option value="">— Operador —</option>{ops.map((o) => <option key={o.id} value={o.id}>{o.nombre}</option>)}</select>
+            <input placeholder="Concepto" value={f.concepto} onChange={(e) => setF({ ...f, concepto: e.target.value })} />
+            <input placeholder="Importe" style={{ width: 100 }} value={f.importe} onChange={(e) => setF({ ...f, importe: e.target.value })} />
+            <input placeholder="Moneda" style={{ width: 70 }} value={f.moneda} onChange={(e) => setF({ ...f, moneda: e.target.value })} />
+            <input placeholder="TC pago" style={{ width: 90 }} value={f.tc} onChange={(e) => setF({ ...f, tc: e.target.value })} />
+            <button className="btn btn-primary" onClick={crear}>Añadir</button>
+          </div>
+        )}
+        <p className="t-body-sm">Solo se puede aplicar/justificar sobre un anticipo en estado <b>pagado</b>. Las aplicaciones consumen saldo en la moneda del anticipo; el TC es el efectivo del pago.</p>
+      </div>
+
+      {selAnt && <AnticipoDetalle anticipo={selAnt} impId={impId} puedeGestionar={puedeGestionar} onChanged={recargar} onError={onError} />}
+    </div>
+  )
+}
+
+function AnticipoDetalle({ anticipo, impId, puedeGestionar, onChanged, onError }: { anticipo: Anticipo; impId: string; puedeGestionar: boolean; onChanged: () => void; onError: (m: string) => void }) {
+  const { profile } = useAuth()
+  const [aplic, setAplic] = useState<Aplicacion[]>([])
+  const [costes, setCostes] = useState<Coste[]>([])
+  const [docs, setDocs] = useState<DocumentoImportacion[]>([])
+  const [g, setG] = useState({ importe: '', fecha: '', coste: '', documento: '', notas: '' })
+
+  const recargar = useCallback(() => { listAplicaciones(anticipo.id).then(setAplic).catch((e) => onError(e.message)) }, [anticipo.id, onError])
+  useEffect(() => {
+    recargar()
+    listCostes(impId).then(setCostes).catch(() => {})
+    listDocumentos(impId).then(setDocs).catch(() => {})
+  }, [recargar, impId])
+
+  const esPagado = anticipo.estado === 'pagado'
+  const aplicar = async () => {
+    onError('')
+    const importe = n(g.importe)
+    if (importe == null || importe <= 0) { onError('Importe de la aplicación obligatorio.'); return }
+    if (importe > anticipo.saldo) { onError(`No puede superar el saldo (${anticipo.saldo} ${anticipo.moneda}).`); return }
+    try {
+      await aplicarAnticipo(anticipo.id, { importe, fecha: g.fecha || null, coste_id: g.coste || null, documento_id: g.documento || null, notas: g.notas || null, created_by: profile?.id ?? null })
+      setG({ importe: '', fecha: '', coste: '', documento: '', notas: '' })
+      recargar(); onChanged()
+    } catch (e) { onError((e as Error).message) }
+  }
+  const anular = async (a: Aplicacion) => {
+    const motivo = window.prompt('Motivo de la anulación:') ?? ''
+    try { await anularAplicacion(a.id, motivo, profile?.id ?? null); recargar(); onChanged() } catch (e) { onError((e as Error).message) }
+  }
 
   return (
     <div className="card stack stack-3">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-        <h2 className="t-heading">Anticipos y pagos</h2>
-        <span className="t-body-sm">Anticipado: <b>{cop(totalCop)}</b> · Saldo pendiente de justificar: <b>{cop(saldoCop)}</b></span>
+        <h3 className="t-heading">Aplicaciones · {anticipo.concepto ?? 'Anticipo'} ({anticipo.importe} {anticipo.moneda})</h3>
+        <span className="t-body-sm">Utilizado <b>{anticipo.importe_utilizado}</b> · Saldo <b>{anticipo.saldo} {anticipo.moneda}</b> · {GRADO_LABEL[anticipo.grado_aplicacion] ?? anticipo.grado_aplicacion}</span>
       </div>
+
+      {puedeGestionar && esPagado && (
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+          <span className="t-body-sm">Aplicar/justificar:</span>
+          <input placeholder={`Importe (≤ ${anticipo.saldo})`} style={{ width: 130 }} value={g.importe} onChange={(e) => setG({ ...g, importe: e.target.value })} />
+          <input type="date" value={g.fecha} onChange={(e) => setG({ ...g, fecha: e.target.value })} />
+          <select value={g.coste} onChange={(e) => setG({ ...g, coste: e.target.value })}>
+            <option value="">— Coste (opcional) —</option>
+            {costes.map((c) => <option key={c.id} value={c.id}>{c.tipo_nombre ?? c.tipo_coste_codigo}{c.concepto ? ` · ${c.concepto}` : ''}</option>)}
+          </select>
+          <select value={g.documento} onChange={(e) => setG({ ...g, documento: e.target.value })}>
+            <option value="">— Documento (opcional) —</option>
+            {docs.map((d) => <option key={d.id} value={d.id}>{d.nombre_archivo ?? d.tipo_codigo ?? d.id}</option>)}
+          </select>
+          <input placeholder="Notas" value={g.notas} onChange={(e) => setG({ ...g, notas: e.target.value })} />
+          <button className="btn btn-primary" onClick={aplicar}>Aplicar</button>
+        </div>
+      )}
+      {!esPagado && <p className="t-body-sm">El anticipo debe estar en estado <b>pagado</b> para poder aplicar/justificar (actual: {anticipo.estado}).</p>}
+
       <div className="table-wrap">
         <table className="data-table">
-          <thead><tr><th>Operador</th><th>Concepto</th><th>Importe</th><th>COP</th><th>Estado</th><th>Utilizado</th><th>Saldo</th></tr></thead>
+          <thead><tr><th>Fecha</th><th>Importe</th><th>Coste</th><th>Documento</th><th>Notas</th><th>Estado</th><th></th></tr></thead>
           <tbody>
-            {items.map((a) => (
-              <tr key={a.id}>
-                <td>{ops.find((o) => o.id === a.operador_id)?.nombre ?? '—'}</td>
-                <td>{a.concepto ?? '—'}</td>
-                <td>{a.importe} {a.moneda}{a.tc ? ` @${a.tc}` : ''}</td>
-                <td>{cop(a.importe_cop)}</td>
-                <td>{puedeGestionar ? (
-                  <select value={a.estado} onChange={(e) => cambiarEstado(a, e.target.value)}>{ESTADOS_ANTICIPO.map((s) => <option key={s} value={s}>{s}</option>)}</select>
-                ) : <span className="badge">{a.estado}</span>}</td>
-                <td>{a.importe_utilizado}</td>
-                <td>{a.saldo}</td>
-              </tr>
-            ))}
-            {items.length === 0 && <tr><td colSpan={7} className="t-body-sm">Sin anticipos.</td></tr>}
+            {aplic.map((a) => {
+              const anulada = a.anulada_at != null
+              return (
+                <tr key={a.id} style={anulada ? { opacity: 0.55, textDecoration: 'line-through' } : undefined}>
+                  <td>{formatFecha(a.fecha)}</td>
+                  <td>{a.importe} {anticipo.moneda}</td>
+                  <td>{costes.find((c) => c.id === a.coste_id)?.tipo_nombre ?? (a.coste_id ? '—' : '')}</td>
+                  <td>{docs.find((d) => d.id === a.documento_id)?.nombre_archivo ?? (a.documento_id ? '—' : '')}</td>
+                  <td>{a.notas ?? '—'}{anulada && a.motivo_anulacion ? ` · anulada: ${a.motivo_anulacion}` : ''}</td>
+                  <td><span className="badge">{anulada ? 'Anulada' : 'Activa'}</span></td>
+                  <td>{puedeGestionar && esPagado && !anulada && <button className="btn btn-secondary" onClick={() => anular(a)}>Anular</button>}</td>
+                </tr>
+              )
+            })}
+            {aplic.length === 0 && <tr><td colSpan={7} className="t-body-sm">Sin aplicaciones.</td></tr>}
           </tbody>
         </table>
       </div>
-      {puedeGestionar && (
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-          <select value={f.operador} onChange={(e) => setF({ ...f, operador: e.target.value })}><option value="">— Operador —</option>{ops.map((o) => <option key={o.id} value={o.id}>{o.nombre}</option>)}</select>
-          <input placeholder="Concepto" value={f.concepto} onChange={(e) => setF({ ...f, concepto: e.target.value })} />
-          <input placeholder="Importe" style={{ width: 100 }} value={f.importe} onChange={(e) => setF({ ...f, importe: e.target.value })} />
-          <input placeholder="Moneda" style={{ width: 70 }} value={f.moneda} onChange={(e) => setF({ ...f, moneda: e.target.value })} />
-          <input placeholder="TC pago" style={{ width: 90 }} value={f.tc} onChange={(e) => setF({ ...f, tc: e.target.value })} />
-          <button className="btn btn-primary" onClick={crear}>Añadir</button>
-        </div>
-      )}
-      <p className="t-body-sm">El TC del anticipo es el efectivo del pago (base del resultado por diferencia de cambio, que se calculará en una fase posterior).</p>
+      <p className="t-body-sm">Las aplicaciones no se borran: se <b>anulan</b> (permanecen en el historial y dejan de contar en "utilizado").</p>
     </div>
   )
 }
