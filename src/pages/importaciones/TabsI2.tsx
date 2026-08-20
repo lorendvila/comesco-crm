@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { formatCOP, formatFecha } from '../../data/constants'
 import { useAuth } from '../../auth/AuthProvider'
 import { listLineas, listOperadores, listDocumentos } from '../../data/importaciones'
@@ -37,6 +37,7 @@ export function TabCostes({ imp, puedeGestionar, onError }: { imp: { id: string;
   const [recoOk, setRecoOk] = useState<boolean | null>(null)
   const [selCoste, setSelCoste] = useState<string | null>(null)
   const [form, setForm] = useState<FormCoste>(nuevoForm())
+  const formRef = useRef<HTMLDivElement | null>(null)
 
   const editable = puedeGestionar && imp.estado_coste !== 'definitivo'
 
@@ -85,9 +86,33 @@ export function TabCostes({ imp, puedeGestionar, onError }: { imp: { id: string;
       fecha_factura: form.sinReal ? null : (form.fechaFactura || null),
     }
     if (!payload.tipo_coste_codigo) { onError('Elige un tipo de coste.'); return }
+    // Un capitalizable con reparto 'directo' necesita destino. chk_directo sigue siendo la
+    // garantía final en BD; esto solo evita llegar a ella con un error crudo de Postgres.
+    if (cap && form.criterio === 'directo' && !payload.referencia_id && !payload.linea_directa_id) {
+      onError('Un coste capitalizable con reparto directo necesita un destino: elige una referencia o una línea.')
+      return
+    }
+    // Al CREAR (no al editar), avisar si ya hay un coste activo del mismo tipo: puede ser
+    // legítimo, pero es justo la confusión que genera duplicados accidentales.
+    if (!form.id) {
+      const yaExiste = costes.find((c) => c.tipo_coste_codigo === form.tipo)
+      if (yaExiste) {
+        const nombre = yaExiste.tipo_nombre ?? form.tipo
+        if (!window.confirm(`Ya existe un coste de tipo "${nombre}" en esta importación. ¿Quieres crear otro?\n\nSi lo que querías era informar su importe real, cancela y pulsa "Editar" en ese coste.`)) return
+      }
+    }
     try {
-      if (form.id) await actualizarCoste(form.id, payload)
-      else await crearCoste(impId, payload)
+      if (form.id) {
+        // PATCH: solo los campos que realmente cambian, para no reescribir criterio/destino
+        // (ni ningún otro dato) en una edición que solo toca el real.
+        const original = costes.find((c) => c.id === form.id)
+        const patch = original
+          ? Object.fromEntries(Object.entries(payload).filter(([k, v]) => v !== (original as unknown as Record<string, unknown>)[k]))
+          : payload
+        if (Object.keys(patch).length > 0) await actualizarCoste(form.id, patch)
+      } else {
+        await crearCoste(impId, payload)
+      }
       if (cap && form.criterio !== 'manual') await recalcularReparto(impId)
       setForm(nuevoForm()); recargar()
     } catch (e) { onError((e as Error).message) }
@@ -95,7 +120,15 @@ export function TabCostes({ imp, puedeGestionar, onError }: { imp: { id: string;
 
   const eliminar = async (c: Coste) => { try { await borrarCoste(c); if (c.criterio_reparto !== 'manual') await recalcularReparto(impId); recargar() } catch (e) { onError((e as Error).message) } }
   const recalc = async () => { try { await recalcularReparto(impId); recargar() } catch (e) { onError((e as Error).message) } }
-  const editar = (c: Coste) => setForm(formDesde(c))
+  // El formulario vive al final de una página larga: sin llevar al usuario hasta él,
+  // "Editar" pasa desapercibido y se acaba usando el alta creyendo que se está editando.
+  const editar = (c: Coste) => {
+    onError('')
+    setForm(formDesde(c))
+    requestAnimationFrame(() => formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }))
+  }
+  const cancelarEdicion = () => { onError(''); setForm(nuevoForm()) }
+  const costeEnEdicion = form.id ? costes.find((c) => c.id === form.id) : null
 
   const totLandedProv = landed.reduce((s, x) => s + (x.landed_prov_cop ?? 0), 0)
   const totProvEst = landed.reduce((s, x) => s + (x.prov_desde_estimado_cop ?? 0), 0)
@@ -199,14 +232,26 @@ export function TabCostes({ imp, puedeGestionar, onError }: { imp: { id: string;
         <TablaCostes costes={noCapitalizables} editable={editable} onEditar={editar} onEliminar={eliminar} onVerReparto={() => {}} selCoste={null} noReparto />
       </div>
 
-      {/* Alta / edición */}
+      {/* Alta / edición — los dos modos deben ser visualmente inconfundibles */}
       {editable && (
-        <div className="card stack stack-3">
-          <h3 className="t-heading">{form.id ? 'Editar coste' : 'Añadir coste'}</h3>
+        <div ref={formRef} className="card stack stack-3"
+          style={form.id ? { outline: '2px solid var(--accent, #888)', outlineOffset: 4 } : undefined}>
+          {form.id ? (
+            <div className="stack stack-2">
+              <span className="badge">EDITANDO COSTE</span>
+              <h3 className="t-heading" style={{ margin: 0 }}>
+                {costeEnEdicion?.tipo_nombre ?? costeEnEdicion?.tipo_coste_codigo ?? 'Coste'}
+                {costeEnEdicion?.concepto ? ` · ${costeEnEdicion.concepto}` : ''}
+              </h3>
+              <p className="t-body-sm">Estás modificando un coste que ya existe. Para crear uno nuevo, pulsa antes «Cancelar edición».</p>
+            </div>
+          ) : (
+            <h3 className="t-heading">Añadir coste</h3>
+          )}
           <FormularioCoste form={form} setForm={setForm} tipos={tipos} ops={ops} refs={refs} lineas={lineas} />
           <div style={{ display: 'flex', gap: 8 }}>
-            <button className="btn btn-primary" onClick={guardarCoste}>{form.id ? 'Guardar' : 'Añadir'}</button>
-            {form.id && <button className="btn btn-secondary" onClick={() => setForm(nuevoForm())}>Cancelar</button>}
+            <button className="btn btn-primary" onClick={guardarCoste}>{form.id ? 'Guardar cambios' : 'Añadir coste'}</button>
+            {form.id && <button className="btn btn-secondary" onClick={cancelarEdicion}>Cancelar edición</button>}
           </div>
         </div>
       )}
@@ -347,7 +392,15 @@ function formDesde(c: Coste): FormCoste {
 function FormularioCoste({ form, setForm, tipos, ops, refs, lineas }: { form: FormCoste; setForm: (f: FormCoste) => void; tipos: TipoCoste[]; ops: Operador[]; refs: ReferenciaResumen[]; lineas: ImportacionLinea[] }) {
   const onTipo = (codigo: string) => {
     const t = tipos.find((x) => x.codigo === codigo)
-    setForm({ ...form, tipo: codigo, capitalizable: t ? t.capitalizable : form.capitalizable, criterio: t?.criterio_reparto_default ?? form.criterio })
+    const criterio = t?.criterio_reparto_default ?? form.criterio
+    // El criterio por defecto del tipo NO debe arrastrar un destino heredado ni inventar uno:
+    // si deja de ser 'directo' se limpia el destino, y si pasa a serlo el usuario ha de elegirlo.
+    setForm({
+      ...form, tipo: codigo,
+      capitalizable: t ? t.capitalizable : form.capitalizable,
+      criterio,
+      referencia: '', linea: '',
+    })
   }
   const prefillTc = async (campo: 'tcEst' | 'tcReal') => { const v = await tcSugerido(); if (v != null) setForm({ ...form, [campo]: String(v) }) }
   return (
