@@ -10,7 +10,7 @@ import {
   recalcularReparto, listReparto, guardarRepartoManual, reconciliar, listLanded,
   listAnticipos, crearAnticipo, actualizarAnticipo, tcSugerido,
   listAplicaciones, aplicarAnticipo, anularAplicacion,
-  CRITERIOS, CRITERIO_LABEL, ESTADOS_ANTICIPO, GRADO_LABEL,
+  CRITERIOS, CRITERIO_LABEL, ESTADOS_ANTICIPO, GRADO_LABEL, MERCANCIA_ESTADO_LABEL,
 } from '../../data/importaciones-costes'
 import type { Aplicacion } from '../../data/importaciones-costes'
 import type { Coste, CosteInput, RepartoRow, LandedLinea, Anticipo } from '../../data/importaciones-costes'
@@ -19,6 +19,8 @@ import type { TipoCoste } from '../../data/importaciones'
 
 const n = (s: string): number | null => (s.trim() === '' ? null : Number.isFinite(Number(s)) ? Number(s) : null)
 const cop = (v: number | null | undefined) => formatCOP(v ?? 0)
+// Para los importes REALES: un real desconocido es "—", nunca $0 (que se leería como "no costó nada").
+const copReal = (v: number | null | undefined) => (v == null ? '—' : formatCOP(v))
 const pct = (part: number, total: number) => (total > 0 ? Math.round((part / total) * 100) : 0)
 const TC_ORIGEN_LABEL: Record<string, string> = { cop: 'COP (1:1)', override: 'Override línea', cabecera: 'Presupuestado', pendiente: 'Pendiente' }
 
@@ -74,8 +76,13 @@ export function TabCostes({ imp, puedeGestionar, onError }: { imp: { id: string;
       referencia_id: cap && form.criterio === 'directo' && form.directoTipo === 'ref' ? form.referencia || null : null,
       linea_directa_id: cap && form.criterio === 'directo' && form.directoTipo === 'linea' ? form.linea || null : null,
       importe_estimado: n(form.impEst), moneda_estimado: form.monEst || null, tc_estimado: n(form.tcEst),
-      importe_real: n(form.impReal), moneda_real: form.monReal || null, tc_real: n(form.tcReal),
-      sin_coste_real: form.sinReal, fecha_factura: form.fechaFactura || null,
+      // "Confirmado sin coste" excluye el importe real (chk_sin_coste_real_excluyente):
+      // se limpian los campos del real para poder pasar de REAL CONOCIDO a CONFIRMADO SIN COSTE.
+      importe_real: form.sinReal ? null : n(form.impReal),
+      moneda_real: form.sinReal ? null : (form.monReal || null),
+      tc_real: form.sinReal ? null : n(form.tcReal),
+      sin_coste_real: form.sinReal,
+      fecha_factura: form.sinReal ? null : (form.fechaFactura || null),
     }
     if (!payload.tipo_coste_codigo) { onError('Elige un tipo de coste.'); return }
     try {
@@ -92,6 +99,14 @@ export function TabCostes({ imp, puedeGestionar, onError }: { imp: { id: string;
 
   const totLandedProv = landed.reduce((s, x) => s + (x.landed_prov_cop ?? 0), 0)
   const totProvEst = landed.reduce((s, x) => s + (x.prov_desde_estimado_cop ?? 0), 0)
+  const totLandedEst = landed.reduce((s, x) => s + (x.landed_est_cop ?? 0), 0)
+  // El landed real total solo existe si TODAS las líneas están completas: sumar las
+  // que sí lo están daría un total parcial con aspecto de cerrado.
+  const realCompleto = landed.length > 0 && landed.every((x) => x.real_completo)
+  const totLandedReal = realCompleto ? landed.reduce((s, x) => s + (x.landed_real_cop ?? 0), 0) : null
+  const totMercEst = landed.reduce((s, x) => s + (x.mercancia_est_cop ?? 0), 0)
+  const mercRealCompleta = landed.length > 0 && landed.every((x) => x.mercancia_estado === 'real')
+  const totMercReal = mercRealCompleta ? landed.reduce((s, x) => s + (x.mercancia_real_cop ?? 0), 0) : null
 
   return (
     <div className="stack stack-4">
@@ -101,14 +116,19 @@ export function TabCostes({ imp, puedeGestionar, onError }: { imp: { id: string;
       <div className="card stack stack-3">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
           <h2 className="t-heading">Landed cost por línea</h2>
-          <span className="t-body-sm">Provisional total: <b>{cop(totLandedProv)}</b> · de estimación: <b>{cop(totProvEst)}</b> ({pct(totProvEst, totLandedProv)}%)</span>
+          <span className="t-body-sm">
+            Estimado: <b>{cop(totLandedEst)}</b> · Real: <b>{copReal(totLandedReal)}</b> · Provisional: <b>{cop(totLandedProv)}</b>
+            {' · '}Desviación: <b>{totLandedProv - totLandedEst >= 0 ? '+' : ''}{cop(totLandedProv - totLandedEst)}</b>
+            {' · '}aún estimado: <b>{cop(totProvEst)}</b> ({pct(totProvEst, totLandedProv)}%)
+          </span>
         </div>
         <div className="table-wrap">
           <table className="data-table">
-            <thead><tr><th>Referencia</th><th>Uds.</th><th>TC efectivo</th><th>Origen TC</th><th>Landed est.</th><th>Landed real</th><th>Landed provisional</th><th>Unitario prov.</th><th>% aún estimado</th></tr></thead>
+            <thead><tr><th>Referencia</th><th>Uds.</th><th>TC efectivo</th><th>Origen TC</th><th>Mercancía est.</th><th>Mercancía real</th><th>Landed est.</th><th>Landed real</th><th>Landed provisional</th><th>Unitario prov.</th><th>% aún estimado</th><th>Valoración real</th></tr></thead>
             <tbody>
               {landed.map((x) => {
                 const pendiente = x.tc_origen_est === 'pendiente'
+                const faltaTcReal = x.mercancia_estado === 'pendiente_tc_real'
                 return (
                   <tr key={x.linea_id}>
                     <td>{nombreLinea(x.linea_id).split(' · ')[0]}</td>
@@ -116,24 +136,39 @@ export function TabCostes({ imp, puedeGestionar, onError }: { imp: { id: string;
                     <td>{pendiente ? '—' : (x.tc_efectivo_est ?? '—')}</td>
                     <td><span className="badge">{TC_ORIGEN_LABEL[x.tc_origen_est] ?? x.tc_origen_est}</span></td>
                     {pendiente ? (
-                      <td colSpan={5}><span className="badge">Pendiente de TC (define TC presupuestado u override de línea)</span></td>
+                      <td colSpan={8}><span className="badge">Pendiente de TC (define TC presupuestado u override de línea)</span></td>
                     ) : (
                       <>
+                        <td>{cop(x.mercancia_est_cop)}</td>
+                        <td>{copReal(x.mercancia_real_cop)}</td>
                         <td>{cop(x.landed_est_cop)}</td>
-                        <td>{cop(x.landed_real_cop)}</td>
+                        <td>{copReal(x.landed_real_cop)}</td>
                         <td><b>{cop(x.landed_prov_cop)}</b></td>
                         <td>{cop(x.landed_prov_unitario)}</td>
                         <td><span className="badge">{pct(x.prov_desde_estimado_cop ?? 0, x.landed_prov_cop ?? 0)}%</span></td>
+                        <td>
+                          <span className="badge">{MERCANCIA_ESTADO_LABEL[x.mercancia_estado] ?? x.mercancia_estado}</span>
+                          {x.costes_pendientes_n > 0 && <span className="t-body-sm"> · {x.costes_pendientes_n} coste(s) sin factura</span>}
+                        </td>
                       </>
                     )}
                   </tr>
                 )
               })}
-              {landed.length === 0 && <tr><td colSpan={9} className="t-body-sm">Sin líneas de mercancía.</td></tr>}
+              {landed.length === 0 && <tr><td colSpan={12} className="t-body-sm">Sin líneas de mercancía.</td></tr>}
             </tbody>
           </table>
         </div>
-        <p className="t-body-sm">TC efectivo = override de la línea si existe; si no, el TC presupuestado de la cabecera; para moneda COP, 1. El provisional usa, por componente, el valor real si existe y si no el estimado; "% aún estimado" indica cuánto del landed sigue siendo estimación.</p>
+        <p className="t-body-sm">
+          TC efectivo = override de la línea si existe; si no, el TC presupuestado de la cabecera; para moneda COP, 1.
+          Las columnas <b>real</b> solo muestran importe cuando el real está <b>completo</b> (mercancía con precio y TC reales, y todos los costes
+          capitalizables con factura o marcados "sin coste"); mientras falte algo aparece "—", nunca $0. El <b>provisional</b> usa, por componente,
+          el real si está completo y si no el estimado; "% aún estimado" indica cuánto del landed sigue siendo estimación.
+          El reparto de costes se calcula siempre sobre el <b>valor estimado</b> de la mercancía: los precios reales no redistribuyen costes entre líneas.
+        </p>
+        {!mercRealCompleta && totMercEst > 0 && (
+          <p className="t-body-sm">Mercancía: estimada <b>{cop(totMercEst)}</b> · real <b>{copReal(totMercReal)}</b> (falta informar precio y/o TC reales en alguna línea; edítalos en la pestaña Mercancía).</p>
+        )}
       </div>
 
       {/* Costes capitalizables */}
@@ -182,7 +217,13 @@ export function TabCostes({ imp, puedeGestionar, onError }: { imp: { id: string;
 function TablaCostes({ costes, editable, onEditar, onEliminar, onVerReparto, selCoste, noReparto }: {
   costes: Coste[]; editable: boolean; onEditar: (c: Coste) => void; onEliminar: (c: Coste) => void; onVerReparto: (id: string) => void; selCoste: string | null; noReparto?: boolean
 }) {
-  const desv = (c: Coste) => (c.importe_real_cop != null && c.importe_estimado_cop != null) ? c.importe_real_cop - c.importe_estimado_cop : null
+  // Real ECONÓMICO: un coste "confirmado sin coste" vale 0, no "desconocido".
+  // (importe_real y sin_coste_real son excluyentes por chk_sin_coste_real_excluyente)
+  const realEconomico = (c: Coste): number | null => (c.sin_coste_real ? 0 : c.importe_real_cop)
+  const desv = (c: Coste) => {
+    const r = realEconomico(c)
+    return (r != null && c.importe_estimado_cop != null) ? r - c.importe_estimado_cop : null
+  }
   return (
     <div className="table-wrap">
       <table className="data-table">
@@ -190,16 +231,17 @@ function TablaCostes({ costes, editable, onEditar, onEliminar, onVerReparto, sel
         <tbody>
           {costes.map((c) => {
             const d = desv(c)
-            const resuelto = c.importe_real != null || c.sin_coste_real
+            // Tres estados trazables, sin cuarta situación ambigua.
+            const estado = c.sin_coste_real ? 'Sin coste (0)' : c.importe_real != null ? 'Resuelto' : 'Pendiente'
             return (
               <tr key={c.id} style={selCoste === c.id ? { outline: '2px solid var(--accent, #888)' } : undefined}>
                 <td>{c.tipo_nombre ?? c.tipo_coste_codigo}</td>
                 <td>{c.concepto ?? '—'}{c.operador_nombre ? ` · ${c.operador_nombre}` : ''}</td>
                 <td>{CRITERIO_LABEL[c.criterio_reparto] ?? c.criterio_reparto}</td>
                 <td>{c.importe_estimado_cop != null ? cop(c.importe_estimado_cop) : '—'}{c.moneda_estimado ? ` (${c.importe_estimado} ${c.moneda_estimado})` : ''}</td>
-                <td>{c.importe_real_cop != null ? cop(c.importe_real_cop) : (c.sin_coste_real ? 'sin coste' : '—')}</td>
-                <td>{d != null ? cop(d) : '—'}</td>
-                <td><span className="badge">{resuelto ? 'Resuelto' : 'Pendiente'}</span></td>
+                <td>{c.sin_coste_real ? '0 (confirmado)' : c.importe_real_cop != null ? cop(c.importe_real_cop) : '—'}</td>
+                <td>{d != null ? `${d > 0 ? '+' : ''}${cop(d)}` : '—'}</td>
+                <td><span className="badge">{estado}</span></td>
                 <td style={{ whiteSpace: 'nowrap' }}>
                   {!noReparto && <button className="btn btn-secondary" onClick={() => onVerReparto(c.id)}>Reparto</button>}{' '}
                   {editable && <button className="btn btn-secondary" onClick={() => onEditar(c)}>Editar</button>}{' '}
@@ -362,14 +404,17 @@ function FormularioCoste({ form, setForm, tipos, ops, refs, lineas }: { form: Fo
       </div>
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
         <span className="t-body-sm">Real:</span>
-        <input placeholder="Importe" style={{ width: 100 }} value={form.impReal} onChange={(e) => setForm({ ...form, impReal: e.target.value })} />
-        <input placeholder="Moneda" style={{ width: 70 }} value={form.monReal} onChange={(e) => setForm({ ...form, monReal: e.target.value })} />
-        <input placeholder="TC" style={{ width: 90 }} value={form.tcReal} onChange={(e) => setForm({ ...form, tcReal: e.target.value })} />
-        <button type="button" className="btn btn-secondary" onClick={() => prefillTc('tcReal')}>TC serie</button>
-        <input type="date" value={form.fechaFactura} onChange={(e) => setForm({ ...form, fechaFactura: e.target.value })} />
-        <label className="t-body-sm" style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
-          <input type="checkbox" checked={form.sinReal} onChange={(e) => setForm({ ...form, sinReal: e.target.checked })} /> Sin coste real
+        <input placeholder="Importe" style={{ width: 100 }} disabled={form.sinReal} value={form.impReal} onChange={(e) => setForm({ ...form, impReal: e.target.value })} />
+        <input placeholder="Moneda" style={{ width: 70 }} disabled={form.sinReal} value={form.monReal} onChange={(e) => setForm({ ...form, monReal: e.target.value })} />
+        <input placeholder="TC" style={{ width: 90 }} disabled={form.sinReal} value={form.tcReal} onChange={(e) => setForm({ ...form, tcReal: e.target.value })} />
+        <button type="button" className="btn btn-secondary" disabled={form.sinReal} onClick={() => prefillTc('tcReal')}>TC serie</button>
+        <input type="date" disabled={form.sinReal} value={form.fechaFactura} onChange={(e) => setForm({ ...form, fechaFactura: e.target.value })} />
+      </div>
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'flex-start' }}>
+        <label className="t-body-sm" style={{ display: 'flex', gap: 4, alignItems: 'center', whiteSpace: 'nowrap' }}>
+          <input type="checkbox" checked={form.sinReal} onChange={(e) => setForm({ ...form, sinReal: e.target.checked })} /> Confirmado sin coste (real = 0)
         </label>
+        <span className="t-body-sm">Márcalo solo si el coste finalmente NO se ha producido. Si la factura aún no ha llegado, déjalo sin marcar: el concepto seguirá valorado por el estimado.</span>
       </div>
       <p className="t-body-sm">El importe COP se calcula con el TC (bloqueado). El estimado nunca se sobrescribe al añadir el real.</p>
     </div>
@@ -554,15 +599,20 @@ export function ResumenIndicadoresI2({ impId }: { impId: string }) {
   const pendientes = costes.filter((c) => c.capitalizable && c.importe_real == null && !c.sin_coste_real).length
   const sinValorar = landed.filter((x) => x.tc_origen_est === 'pendiente').length
   const saldoAnticipos = anticipos.reduce((s, a) => s + (a.saldo_cop ?? 0), 0)
+  // Real total solo si TODAS las líneas están completas (ver v_importacion_landed).
+  const real = landed.length > 0 && landed.every((x) => x.real_completo)
+    ? landed.reduce((s, x) => s + (x.landed_real_cop ?? 0), 0) : null
+  const mercPendientes = landed.filter((x) => x.mercancia_estado !== 'real').length
 
   const items = useMemo(() => ([
     ['Landed estimado', cop(est)],
+    ['Landed real', copReal(real)],
     ['Landed provisional', cop(prov)],
-    ['Desviación prov. vs est.', `${desvPct > 0 ? '+' : ''}${desvPct}%`],
+    ['Desviación prov. vs est.', `${desvPct > 0 ? '+' : ''}${desvPct}% (${prov - est >= 0 ? '+' : ''}${cop(prov - est)})`],
     ['Aún estimado', `${cop(provEst)} (${pct(provEst, prov)}%)`],
     ['Facturas pendientes', String(pendientes)],
     ['Saldo anticipos', cop(saldoAnticipos)],
-  ] as [string, string][]), [est, prov, desvPct, provEst, pendientes, saldoAnticipos])
+  ] as [string, string][]), [est, real, prov, desvPct, provEst, pendientes, saldoAnticipos])
 
   return (
     <div className="card stack stack-3">
@@ -577,6 +627,7 @@ export function ResumenIndicadoresI2({ impId }: { impId: string }) {
       </div>
       {sinValorar > 0 && <p className="t-body-sm">⚠ {sinValorar} línea(s) <b>pendiente(s) de TC</b>: sin TC presupuestado ni override no se puede valorar la mercancía (no cuentan en el landed).</p>}
       {pendientes > 0 && <p className="t-body-sm">⚠ {pendientes} concepto(s) capitalizable(s) sin factura real: el landed sigue siendo provisional.</p>}
+      {mercPendientes > 0 && <p className="t-body-sm">⚠ {mercPendientes} línea(s) de mercancía sin <b>valoración real</b> (precio y/o TC reales): se valoran por el estimado y el landed real no puede cerrarse.</p>}
     </div>
   )
 }

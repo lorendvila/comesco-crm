@@ -175,16 +175,28 @@ export interface LandedLinea {
   tc_efectivo_est: number | null
   tc_origen_est: string // 'cop' | 'override' | 'cabecera' | 'pendiente'
   mercancia_est_cop: number | null
-  mercancia_real_cop: number | null
+  mercancia_real_cop: number | null // null mientras el real no esté COMPLETO (nunca 0 ni el estimado)
   mercancia_prov_cop: number | null
   costes_est_cop: number
-  costes_real_cop: number
+  costes_real_cop: number | null // null si queda algún coste capitalizable sin resolver
   costes_prov_cop: number
   landed_est_cop: number | null
-  landed_real_cop: number | null
+  landed_real_cop: number | null // null si mercancía o costes siguen incompletos
   landed_prov_cop: number | null
   prov_desde_estimado_cop: number | null
   landed_prov_unitario: number | null
+  // 0039 — valoración real de la mercancía
+  tc_real_efectivo: number | null
+  mercancia_estado: MercanciaEstado
+  costes_pendientes_n: number
+  real_completo: boolean
+}
+
+export type MercanciaEstado = 'real' | 'pendiente' | 'pendiente_tc_real'
+export const MERCANCIA_ESTADO_LABEL: Record<string, string> = {
+  real: 'Real',
+  pendiente: 'Pendiente',
+  pendiente_tc_real: 'Pendiente de TC real',
 }
 export async function listLanded(importacionId: string): Promise<LandedLinea[]> {
   const { data, error } = await supabase

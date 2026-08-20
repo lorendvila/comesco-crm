@@ -9,7 +9,7 @@ import { listAlmacenes } from '../../data/almacenes'
 import type { Almacen } from '../../data/almacenes'
 import {
   getImportacion, updateImportacion, cambiarEstadoLogistico, archivarImportacion, restaurarImportacion,
-  listLineas, addLinea, deleteLinea, updateLineaTc,
+  listLineas, addLinea, deleteLinea, updateLineaTc, updateLineaPrecioReal, updateLineaTcReal,
   listImportacionOperadores, addImportacionOperador, removeImportacionOperador,
   listDocumentos, crearDocumento, subirArchivo, urlFirmada, actualizarDocumento, borrarDocumento, archivarDocumento,
   listOperadores, listTiposRolOperador, listTiposDocumento,
@@ -54,6 +54,9 @@ export function ImportacionFichaPage() {
   if (!imp) return <p className="t-body-sm">Importación no encontrada.</p>
 
   const editable = puedeGestionar && ['borrador', 'confirmada'].includes(imp.estado_logistico)
+  // La factura definitiva del proveedor llega tarde (mercancía en tránsito o recibida):
+  // la valoración REAL sigue siendo editable mientras el coste no sea definitivo.
+  const editableReal = puedeGestionar && imp.estado_logistico !== 'anulada' && imp.estado_coste !== 'definitivo'
   const transiciones = transicionesLogisticas(imp.estado_logistico)
 
   const mover = async (estado: string) => {
@@ -105,7 +108,7 @@ export function ImportacionFichaPage() {
       </div>
 
       {tab === 'Resumen' && <TabResumen imp={imp} />}
-      {tab === 'Mercancía' && <TabMercancia impId={imp.id} editable={editable} onError={setError} />}
+      {tab === 'Mercancía' && <TabMercancia impId={imp.id} editable={editable} editableReal={editableReal} onError={setError} />}
       {tab === 'Costes' && <TabCostes imp={imp} puedeGestionar={puedeGestionar} onError={setError} />}
       {tab === 'Operadores' && <TabOperadores impId={imp.id} puedeGestionar={puedeGestionar} onError={setError} />}
       {tab === 'Logística' && <TabLogistica imp={imp} puedeGestionar={puedeGestionar} onSaved={recargar} onError={setError} />}
@@ -142,7 +145,7 @@ function TabResumen({ imp }: { imp: Importacion }) {
 }
 
 // ---------------- Mercancía ----------------
-function TabMercancia({ impId, editable, onError }: { impId: string; editable: boolean; onError: (m: string) => void }) {
+function TabMercancia({ impId, editable, editableReal, onError }: { impId: string; editable: boolean; editableReal: boolean; onError: (m: string) => void }) {
   const [lineas, setLineas] = useState<ImportacionLinea[]>([])
   const [refs, setRefs] = useState<ReferenciaResumen[]>([])
   const [ops, setOps] = useState<Operador[]>([])
@@ -172,15 +175,28 @@ function TabMercancia({ impId, editable, onError }: { impId: string; editable: b
   }
   const quitar = async (lid: string) => { try { await deleteLinea(lid); cargar() } catch (e) { onError((e as Error).message) } }
   const guardarTc = async (id: string, v: string) => { try { await updateLineaTc(id, num(v)); cargar() } catch (e) { onError((e as Error).message) } }
+  const guardarPrecioReal = async (id: string, v: string) => { try { await updateLineaPrecioReal(id, num(v)); cargar() } catch (e) { onError((e as Error).message) } }
+  const guardarTcReal = async (id: string, v: string) => { try { await updateLineaTcReal(id, num(v)); cargar() } catch (e) { onError((e as Error).message) } }
+
+  // Estado de la valoración real, con la misma semántica estricta que la vista de landed:
+  // COP no necesita TC real; en divisa hacen falta precio real Y TC real.
+  const estadoReal = (l: ImportacionLinea): 'real' | 'pendiente' | 'pendiente_tc_real' => {
+    if (l.precio_compra_real == null) return 'pendiente'
+    if (l.moneda !== 'COP' && l.tc_real == null) return 'pendiente_tc_real'
+    return 'real'
+  }
+  const ESTADO_REAL_LABEL = { real: 'Real', pendiente: 'Pendiente', pendiente_tc_real: 'Pendiente de TC real' } as const
 
   return (
     <div className="card stack stack-3">
       <h2 className="t-heading">Mercancía por referencia</h2>
       <div className="table-wrap">
         <table className="data-table">
-          <thead><tr><th>Referencia</th><th>Proveedor</th><th>Uds.</th><th>Cajas</th><th>Pallets</th><th>Precio</th><th>Importe</th><th>TC valoración (override)</th><th></th></tr></thead>
+          <thead><tr><th>Referencia</th><th>Proveedor</th><th>Uds.</th><th>Cajas</th><th>Pallets</th><th>Precio est.</th><th>Importe est.</th><th>TC valoración (override)</th><th>Precio real</th><th>TC real</th><th>Valoración real</th><th></th></tr></thead>
           <tbody>
-            {lineas.map((l) => (
+            {lineas.map((l) => {
+              const est = estadoReal(l)
+              return (
               <tr key={l.id}>
                 <td>{l.referencia_nombre ?? l.referencia_id}{l.referencia_sku ? ` (${l.referencia_sku})` : ''}</td>
                 <td>{l.proveedor_nombre ?? '—'}</td>
@@ -196,13 +212,34 @@ function TabMercancia({ impId, editable, onError }: { impId: string; editable: b
                       onBlur={(e) => { if ((e.target.value.trim() || null) !== (l.tc_estimado != null ? String(l.tc_estimado) : null)) guardarTc(l.id, e.target.value) }} />
                   ) : (l.tc_estimado ?? (l.moneda === 'COP' ? '1:1' : 'cabecera'))}
                 </td>
+                <td>
+                  {editableReal ? (
+                    <input key={l.id + '-pr-' + (l.precio_compra_real ?? '')} style={{ width: 90 }} defaultValue={l.precio_compra_real ?? ''}
+                      placeholder="—" title={`Precio unitario real (${l.moneda}) según factura definitiva. Vacío = todavía no informado.`}
+                      onBlur={(e) => { if ((e.target.value.trim() || null) !== (l.precio_compra_real != null ? String(l.precio_compra_real) : null)) guardarPrecioReal(l.id, e.target.value) }} />
+                  ) : (l.precio_compra_real != null ? `${l.precio_compra_real} ${l.moneda}` : '—')}
+                </td>
+                <td>
+                  {l.moneda === 'COP' ? <span className="t-body-sm">1:1</span> : editableReal ? (
+                    <input key={l.id + '-tr-' + (l.tc_real ?? '')} style={{ width: 90 }} defaultValue={l.tc_real ?? ''}
+                      placeholder="—" title="TC real aplicado a la mercancía. Sin él la línea no cuenta como real."
+                      onBlur={(e) => { if ((e.target.value.trim() || null) !== (l.tc_real != null ? String(l.tc_real) : null)) guardarTcReal(l.id, e.target.value) }} />
+                  ) : (l.tc_real ?? '—')}
+                </td>
+                <td><span className="badge">{ESTADO_REAL_LABEL[est]}</span></td>
                 <td>{editable && <button className="btn btn-secondary" onClick={() => quitar(l.id)}>Quitar</button>}</td>
               </tr>
-            ))}
-            {lineas.length === 0 && <tr><td colSpan={9} className="t-body-sm">Sin mercancía todavía.</td></tr>}
+              )
+            })}
+            {lineas.length === 0 && <tr><td colSpan={12} className="t-body-sm">Sin mercancía todavía.</td></tr>}
           </tbody>
         </table>
       </div>
+      <p className="t-body-sm">
+        La <b>valoración real</b> se informa cuando llega la factura definitiva del proveedor (aunque la mercancía ya esté en tránsito).
+        En divisa hacen falta <b>precio real y TC real</b>; en COP el TC real es 1. Mientras falte alguno, la línea sigue valorada por el
+        estimado y así se refleja en el landed: nunca se muestra un real desconocido como 0. El estimado se conserva siempre para medir la desviación.
+      </p>
       {editable && (
         <div className="stack stack-2">
           <h3 className="t-body-sm">Añadir línea</h3>

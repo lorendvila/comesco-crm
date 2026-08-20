@@ -265,6 +265,8 @@ export interface ImportacionLinea {
   precio_compra: number
   moneda: string
   tc_estimado: number | null // override de TC de valoración por línea (si null, usa tc_presupuestado de la cabecera)
+  precio_compra_real: number | null // precio unitario REAL (factura definitiva); null = todavía no informado
+  tc_real: number | null // TC real de la mercancía; obligatorio en divisa, irrelevante en COP (=1)
   importe_mercancia: number | null
   notas: string | null
   // enriquecidos
@@ -310,6 +312,19 @@ export type LineaInput = {
 // Actualiza solo el TC override de una línea (o lo limpia con null -> usa cabecera).
 export async function updateLineaTc(id: string, tc_estimado: number | null): Promise<void> {
   const { error } = await supabase.from('importacion_lineas').update({ tc_estimado }).eq('id', id)
+  if (error) throw error
+}
+
+// Valoración REAL de la mercancía (factura definitiva del proveedor). Se puede informar
+// aunque la importación ya esté en tránsito; el guard solo exige que no esté anulada ni
+// con estado_coste=definitivo. Se envía únicamente el campo tocado para no arrastrar el
+// resto de la línea (el guard rechaza cualquier otro cambio fuera de borrador/confirmada).
+export async function updateLineaPrecioReal(id: string, precio_compra_real: number | null): Promise<void> {
+  const { error } = await supabase.from('importacion_lineas').update({ precio_compra_real }).eq('id', id)
+  if (error) throw error
+}
+export async function updateLineaTcReal(id: string, tc_real: number | null): Promise<void> {
+  const { error } = await supabase.from('importacion_lineas').update({ tc_real }).eq('id', id)
   if (error) throw error
 }
 

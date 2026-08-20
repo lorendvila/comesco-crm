@@ -1924,6 +1924,7 @@ export type Database = {
         Row: {
           cantidad_unidades: number | null
           costes_est_cop: number | null
+          costes_pendientes_n: number | null
           costes_prov_cop: number | null
           costes_real_cop: number | null
           importacion_id: string | null
@@ -1933,13 +1934,16 @@ export type Database = {
           landed_real_cop: number | null
           linea_id: string | null
           mercancia_est_cop: number | null
+          mercancia_estado: string | null
           mercancia_prov_cop: number | null
           mercancia_real_cop: number | null
           moneda: string | null
           prov_desde_estimado_cop: number | null
+          real_completo: boolean | null
           referencia_id: string | null
           tc_efectivo_est: number | null
           tc_origen_est: string | null
+          tc_real_efectivo: number | null
         }
         Relationships: [
           {
@@ -1965,7 +1969,11 @@ export type Database = {
           landed_prov_cop: number | null
           landed_prov_unitario: number | null
           landed_real_cop: number | null
+          mercancia_est_cop: number | null
+          mercancia_prov_cop: number | null
+          mercancia_real_cop: number | null
           prov_desde_estimado_cop: number | null
+          real_completo: boolean | null
           referencia_id: string | null
           unidades: number | null
         }
@@ -2027,6 +2035,10 @@ export type Database = {
       siguiente_numero_pedido: { Args: never; Returns: string }
       tc_efectivo: {
         Args: { p_moneda: string; p_tc_cabecera: number; p_tc_linea: number }
+        Returns: number
+      }
+      tc_real_efectivo: {
+        Args: { p_moneda: string; p_tc_real: number }
         Returns: number
       }
     }
